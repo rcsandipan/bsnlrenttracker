@@ -7,7 +7,7 @@
     
     <!-- <link rel="stylesheet" href="homepage.css">
     <link rel="stylesheet" href="tablestyle.css"> -->
-    <link rel="stylesheet" href="styles.css"> 
+    <!-- <link rel="stylesheet" href="styles.css">  -->
 
 
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
@@ -42,6 +42,25 @@
       position: relative; /* Required for absolute positioning of child elements */
       top: 25px;
     }
+
+ .bulb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 10px;
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        .bulb.year {
+            background-color: #e5ff00;
+            box-shadow: 0 0 15px #e5ff00, 0 0 30px #e5ff00;
+        }
+        
+        .bulb.halfyear {
+            background-color: #ff0000;
+            box-shadow: 0 0 15px #ff0000, 0 0 30px #ff0000;
+        }
     
 </style>
 
@@ -90,6 +109,8 @@
           <th style="text-align: center;">Other TSP</th>
           <th style="text-align: center;">Revision <br>Count</th>
           <th style="text-align: center;">HPC Report</th>
+          <th style="text-align: center;">Next Revision <br> Date</th>
+          <th style="text-align: center;">Next Revision <br> Due After (Days)</th>
           <th style="text-align: center;">Action</th>
          
         </tr>
@@ -207,13 +228,21 @@ async function renderTable() {
         }
 
         const endDate = parseDMY(btsdata.agreeenddate);
+        const nextrevDate = parseDMY(btsdata.nextrevisiondate);
         const currentDate = parseDMY(date);
 
         let days = '';
+        let revdays = '';
         if (endDate && currentDate) {
         const diffTime = endDate - currentDate;
         days = Math.floor(diffTime / (1000 * 3600 * 24));
         }
+
+        if (nextrevDate && currentDate) {
+        const diffTime2 = nextrevDate - currentDate;
+        revdays = Math.floor(diffTime2 / (1000 * 3600 * 24));
+        }
+
 
      
         const row = document.createElement("tr");
@@ -234,7 +263,19 @@ async function renderTable() {
 
             <td style="text-align: center;">${btsdata.agreestartdate || ''}</td>
             <td style="text-align: center;">${btsdata.agreeenddate || ''}</td>
-            <td style="text-align: center;">${days}</td>
+            <td style="text-align: center;">
+                ${days}
+                <br>
+                ${days <= 180
+                ? '<span class="bulb halfyear"></span>'
+                : days <= 365
+                ? '<span class="bulb year"></span>'
+                : ''
+                }
+                
+                
+
+            </td>
             <td style="text-align: center;">${btsdata.monthlyrent || ''}</td>
             <td style="text-align: center;">${btsdata.wwcharge || ''}</td>
             <td>${btsdata.othertsp || ''}</td>
@@ -245,6 +286,19 @@ async function renderTable() {
                     Click Here
                 </a>
             </td>
+
+            <td style="text-align: center;">${btsdata.nextrevisiondate || ''}</td>
+            <td style="text-align: center;">
+                 ${revdays}
+                <br>
+                ${revdays <= 180
+                ? '<span class="bulb halfyear"></span>'
+                : revdays <= 365
+                ? '<span class="bulb year"></span>'
+                : ''
+                }
+                                                
+                </td>
 
             <td style="width:130px;">
                 <button class="btn btn-info btn-xs edit-btn">Edit</button>
@@ -289,6 +343,9 @@ window.editBts = function (btsdata) {
         <label><span style="color: red;">Rent Revision: </span>
                 <input id="swal_rr" class="swal2-input" value="${btsdata.rentrevisioncount || ''}" style="margin:0;">
             </label>
+        <label><span style="color: red;">Next Revision Date: </span>
+                <input id="swal_nextrevdate" class="swal2-input" value="${btsdata.nextrevisiondate || ''}" style="margin:0;">
+            </label>
 
         <label><span style="color: red;">Agreement PDF URL: </span>
                 <input id="swal_agreeurl" class="swal2-input" value="${btsdata.agreeurl || ''}" style="margin:0;">
@@ -311,6 +368,7 @@ window.editBts = function (btsdata) {
       const monthlyrent = String(document.getElementById('swal_monthlyrent').value.trim());
       const wwcharge = String(document.getElementById('swal_ww').value.trim());
       const rr = String(document.getElementById('swal_rr').value.trim());
+      const nextrevdate = document.getElementById('swal_nextrevdate').value.trim();
       const agreeurl = document.getElementById('swal_agreeurl').value.trim();
       const hpcurl = document.getElementById('swal_hpcurl').value.trim();
       
@@ -334,6 +392,7 @@ window.editBts = function (btsdata) {
 	       monthlyrent: monthlyrent,
            wwcharge: wwcharge,
            rentrevisioncount: rr,
+           nextrevisiondate: nextrevdate,
            agreeurl: agreeurl,
            hpcurl: hpcurl
 
