@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTS</title>
+    
+    <!-- <link rel="stylesheet" href="homepage.css">
+    <link rel="stylesheet" href="tablestyle.css"> -->
+    <link rel="stylesheet" href="styles.css"> 
+
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+     <script src="https://cdn.rawgit.com/rainabba/jquery-table2excel/1.1.0/dist/jquery.table2excel.min.js"></script>
+     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<style>
+    a{
+    text-decoration: none;
+    color: white;
+    cursor: pointer;
+}
+   #provdetaildiv{
+    position: fixed;
+    top: 200px; /* Distance from the top */
+      right: 100px; /* Distance from the right */
+      background-color: #FFDEC8;
+      border: 1px solid black;
+      z-index: 1000; /* Ensure it's above other elements */
+      overflow: auto;
+   }
+   #provdetailtable td  {
+    border: 1px solid black;
+   }
+   #provdetailtable th  {
+    border: 1px solid black;
+   }
+      /* Add this CSS to position the open-btn */
+      .main-content {
+      position: relative; /* Required for absolute positioning of child elements */
+      top: 25px;
+    }
+    
+</style>
+
+<body>
+
+
+<div class="main-content">
+    <button class="btn btn-success" id="home-btn"> HOME</button>
+    <h1 style="display:flex; text-align: center; margin-left: 40%;"> MEETING MINUTES</h1>
+    
+<div>Total Count: <b id="searchcount"></b> </div>
+<div style="display: inline-flex; justify-content: space-evenly;" >
+    
+    <div  style="margin-right: 700px; width: 400px;" >
+        <select id="yearFilter" class="form-control">
+    <option>Loading...</option>
+</select>
+<br>
+    <input type="text" id="searchInput" class="form-control"
+           placeholder="🔍 Search keywords" width="500px"
+           >
+   </div>
+
+<div>
+    <button class="btn btn-primary" id="exportBtn" >
+    Export to Excel
+</button>
+</div>
+
+
+ </div>
+
+    <table class="table table-bordered" id="momdata-table" style="margin-top: 20px;">
+      <thead>
+        <tr>
+          <th>Year</th>
+          <th>Meeting Date</th>
+          <th>View Minutes</th>
+         
+
+        </tr>
+      </thead>
+      <tbody id="momdata-body">
+        <!-- Filled by JS -->
+      </tbody>
+    </table>
+
+</div>
+   
+    
+
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <script src="https://cdn.rawgit.com/rainabba/jquery-table2excel/1.1.0/dist/jquery.table2excel.min.js"></script>
+    <script src="script.js"></script>
+    <script type="module" src="auth-check.js"></script>
+    <script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+//import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+ import { app} from "./firebase-config.js";  
+
+//const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+
+
+const dataRef = ref(db, 'mom');
+let selectedYear = "All";
+
+let allMeetings = {};
+
+onValue(dataRef, (snapshot) => {
+    allMeetings = snapshot.val() || {};
+
+        populateYearSelect(allMeetings);
+
+    // Show latest year by default
+    const defaultYear = document.getElementById("yearFilter").value;
+    displayMeetings(defaultYear);
+
+ 
+    // renderTable();
+});
+
+function populateYearSelect(data) {
+
+    const select = document.getElementById("yearFilter");
+    select.innerHTML = "";
+
+    // Get unique years
+    const years = [...new Set(
+        Object.values(data)
+            .map(item => item.year)
+            .filter(year => year)
+    )];
+
+    // Sort descending (latest first)
+    years.sort((a, b) => Number(b) - Number(a));
+
+    // Add year options
+    years.forEach(year => {
+        const option = document.createElement("option");
+        option.value = year;
+        option.textContent = year;
+        select.appendChild(option);
+    });
+
+    // Add "All" at the bottom
+    const allOption = document.createElement("option");
+    allOption.value = "All";
+    allOption.textContent = "All";
+    select.appendChild(allOption);
+
+    // Default selection = latest year
+    if (years.length > 0) {
+        select.value = years[0];
+    }
+}
+
+// Change event
+document.getElementById("yearFilter").addEventListener("change", function () {
+    displayMeetings(this.value);
+});
+
+function displayMeetings(year) {
+
+    // const filtered = Object.entries(allMeetings).filter(([key, item]) => {
+    //     return selectedYear === "All" || item.year === selectedYear;
+    // });
+
+    // console.log(filtered);
+
+    // Your existing code to display the rows goes here.
+    selectedYear = year;
+    renderTable();
+}
+
+
+
+
+/* ============================= */
+/* ===== RENDER TABLE ========= */
+/* ============================= */
+function renderTable() {
+
+    const tbody = document.getElementById("momdata-body");
+   
+    const searchText = document.getElementById("searchInput").value.toLowerCase();
+    let searchcount = document.getElementById('searchcount');
+
+    tbody.innerHTML = "";
+
+    let filteredData = [];
+
+    for (let key in allMeetings) {
+
+        const momdata = allMeetings[key];
+
+          // Year filter
+        if (selectedYear !== "All" && momdata.year !== selectedYear) {
+            continue;
+        }
+
+        
+        /* SEARCH FILTER */
+        const rowText = Object.values(momdata).join(" ").toLowerCase();
+        if (!rowText.includes(searchText)) continue;
+
+        filteredData.push(momdata);
+
+
+         filteredData.sort((a, b) => {
+       
+        let yearA = parseInt(a.year, 10);
+        let yearB = parseInt(b.year, 10);
+
+        if (isNaN(yearA)) yearA = 999;
+        if (isNaN(yearB)) yearB = 999;
+
+        return yearB - yearA;
+    });
+    }
+
+
+
+    
+
+    /* ============================= */
+    /* ===== CREATE ROWS ========== */
+    /* ============================= */
+    filteredData.forEach(momdata => {
+
+     
+
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+            
+            <td>${momdata.year || ''}</td>
+            <td>${momdata.meetingdate || ''}</td>
+            <td>
+                <a href="${momdata.pdfurl}" target="_blank" class="btn btn-primary btn-xs">
+                    Click Here
+                </a>
+            </td>
+            
+           
+        `;
+
+        tbody.appendChild(row);
+    });
+    searchcount.innerText = filteredData.length;
+}
+
+/* ============================= */
+/* ===== SEARCH + FILTER ===== */
+/* ============================= */
+document.getElementById("searchInput").addEventListener("keyup", function(){
+    renderTable();
+    
+});
+
+
+/* ============================= */
+/* ===== EXPORT TO EXCEL ===== */
+/* ============================= */
+document.getElementById("exportBtn").addEventListener("click", function () {
+
+    $("#momdata-table").table2excel({
+        exclude: ".noExl",
+        name: "MoM Report",
+        filename: "MoM_Report",
+        fileext: ".xls"
+    });
+
+});
+
+    </script>
+</body>
+</html>
