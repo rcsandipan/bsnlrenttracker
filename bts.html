@@ -5,11 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BTS</title>
     
-    <!-- <link rel="stylesheet" href="homepage.css">
-    <link rel="stylesheet" href="tablestyle.css"> -->
-    <!-- <link rel="stylesheet" href="styles.css">  -->
-
-
+  
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
@@ -86,7 +82,10 @@
 
 <div>
     <button class="btn btn-primary" id="exportBtn" >
-    Export to Excel
+    📊 Export to Excel
+</button> 
+<button class="btn btn-primary" id="addBtn" style="margin-left: 100px;">
+    ➕ Add New Entry
 </button>
 </div>
 
@@ -160,7 +159,7 @@ function getFirebaseServerDateTime() {
   });
 }
 
-
+const btnAddEntry = document.getElementById('addBtn');
 
 const dataRef = ref(db, 'btslist');
 
@@ -257,7 +256,7 @@ async function renderTable() {
             <td>${btsdata.location || ''}</td>
             <td style="text-align: center;">
                 <a href="${btsdata.agreeurl}" target="_blank" class="btn btn-primary btn-xs">
-                    Click Here
+                    Click Here 
                 </a>
             </td>
 
@@ -266,9 +265,9 @@ async function renderTable() {
             <td style="text-align: center;">
                 ${days}
                 <br>
-                ${days <= 180
+                ${days && days <= 180
                 ? '<span class="bulb halfyear"></span>'
-                : days <= 365
+                : days && days <= 365
                 ? '<span class="bulb year"></span>'
                 : ''
                 }
@@ -291,9 +290,9 @@ async function renderTable() {
             <td style="text-align: center;">
                  ${revdays}
                 <br>
-                ${revdays <= 180
+                ${ revdays && revdays <= 180
                 ? '<span class="bulb halfyear"></span>'
-                : revdays <= 365
+                :  revdays && revdays <= 365
                 ? '<span class="bulb year"></span>'
                 : ''
                 }
@@ -441,6 +440,127 @@ window.deleteBts = async function (key) {
 document.getElementById("searchInput").addEventListener("keyup", function(){
     renderTable();
     
+});
+
+
+/*============Add New Entry=================== */
+
+btnAddEntry.addEventListener("click", async () => {
+    const result = await Swal.fire({
+        title: "Add New Entry",
+        width: "480px",
+        html: `
+        <div style="text-align: left; font-size: 12px; width: 100%; display: flex; flex-direction: column; gap: 0;">
+            <label><span style="color: red;">Vendor Code: </span>
+                <input id="vendorcode" class="swal2-input" placeholder="Enter Vendor Code" style="margin:0;">
+            </label>
+
+            <label><span style="color: red;">Contract Code: </span>
+                <input id="contractcode" class="swal2-input" placeholder="Enter Contract Code" style="margin:0;">
+            </label>
+
+            <label><span style="color: red;">Owner's Name: </span>
+                <input id="name" class="swal2-input" placeholder="Enter Owner's Name" style="margin:0;">
+            </label>
+
+            
+            <label><span style="color: red;">Location: </span>
+                <input id="location" class="swal2-input" placeholder="Enter Location" style="margin:0;">
+            </label>
+
+            <label><span style="color: red;"> Agreement Start Date: </span>
+                <input id="agreestartdate" type="date" class="swal2-input" placeholder="Enter Agreement Start Date" style="margin:0;">
+            </label>
+	     <label><span style="color: red;"> Agreement End Date: </span>
+                <input id="agreeenddate" type="date" class="swal2-input" placeholder="Enter Agreement End Date" style="margin:0;">
+            </label>
+
+            <label><span style="color: red;"> Agreement PDF URL </span>
+                <input id="agreeurl" class="swal2-input" placeholder="Enter PDF URL" style="margin:0;">
+            </label>
+            <label><span style="color: red;"> HPC PDF URL </span>
+                <input id="hpcurl" class="swal2-input" placeholder="Enter PDF URL" style="margin:0;">
+            </label>
+            <label><span style="color: red;">Monthly Rent (₹): </span>
+                <input id="monthlyrent" class="swal2-input" placeholder="Enter Monthly Rent" style="margin:0;">
+            </label>
+	     <label><span style="color: red;">Monthly Watch & Ward Charge (₹): </span>
+                <input id="ww" class="swal2-input" placeholder="Enter Monthly Watch & Ward Charge" style="margin:0;">
+            </label>
+
+          
+        </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: "ADD",
+	
+	preConfirm: async () => {
+
+    function formatDateDDMMYYYY(dateStr) {
+  if (!dateStr) return "";
+  const [year, month, day] = dateStr.split("-");
+  return `${day}-${month}-${year}`;
+}
+      
+  const key = String(document.getElementById('contractcode').value.trim());
+  const name = document.getElementById('name').value.trim();
+  const location = document.getElementById('location').value.trim();
+  const vendorcode = String(document.getElementById('vendorcode').value.trim());
+  const monthlyrent = String(document.getElementById('monthlyrent').value.trim());
+  const wwcharge = String(document.getElementById('ww').value.trim());
+  const agreestartdate = formatDateDDMMYYYY(document.getElementById('agreestartdate').value.trim());
+  const agreeenddate = formatDateDDMMYYYY(document.getElementById('agreeenddate').value.trim());
+  const agreeurl = document.getElementById('agreeurl').value.trim();
+  const hpcurl = document.getElementById('hpcurl').value.trim();
+      
+       if (!key) {
+        Swal.showValidationMessage('Please Enter Contract Code');
+        return false;
+      }
+
+   
+
+      try {
+
+        const dbRef = ref(db, "btslist/" + key);
+            const snapshot = await get(dbRef);
+
+            if (snapshot.exists()) {
+                Swal.fire("Entryalready exists!");
+                return;
+            }
+     
+
+    //console.log(JSON.stringify(data));
+        await set(ref(db, `btslist/${key}`), {
+           name: name,
+	         location: location,
+           vendorcode: vendorcode,
+           contractcode: key,
+           agreestartdate: agreestartdate,
+           agreeenddate: agreeenddate,
+	         monthlyrent: monthlyrent,
+           wwcharge: wwcharge,
+           agreeurl: agreeurl,
+           hpcurl: hpcurl
+
+        });
+        console.log("adding finished");
+        return true;
+      } catch (err) {
+            console.error("ERROR:", err);
+            console.error("STACK:", err.stack);
+            Swal.showValidationMessage(err.message);
+      }
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Swal.fire("Added", "entry added", "success");
+      //window.reload();
+      //loadStaffList();
+    }
+  });
+
 });
 
 
