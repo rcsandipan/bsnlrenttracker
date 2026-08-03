@@ -10,6 +10,7 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
      <script src="https://cdn.rawgit.com/rainabba/jquery-table2excel/1.1.0/dist/jquery.table2excel.min.js"></script>
+     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
      <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <style>
@@ -84,7 +85,7 @@
     <button class="btn btn-primary" id="exportBtn" >
     📊 Export to Excel
 </button> 
-<button class="btn btn-primary" id="addBtn" style="margin-left: 100px;">
+<button class="btn btn-primary" id="addBtn" style="margin-left: 50px;">
     ➕ Add New Entry
 </button>
 </div>
@@ -95,6 +96,7 @@
     <table class="table table-bordered" id="bts-table" style="margin-top: 20px;">
       <thead>
         <tr>
+          <th style="text-align: center;">SL</th>
           <th style="text-align: center;">Vendor Code</th>
           <th style="text-align: center;">Contract Code</th>
           <th style="text-align: center;">Name</th>
@@ -127,8 +129,11 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
     <script src="https://cdn.rawgit.com/rainabba/jquery-table2excel/1.1.0/dist/jquery.table2excel.min.js"></script>
     <script src="script.js"></script>
-    <script type="module" src="auth-check.js"></script>
+   
     <script type="module">
+        if (sessionStorage.getItem('isLoggedIn') !== 'true') {
+        window.location.href = 'index.html';
+        }
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
     import { getDatabase, ref, child, onValue, get, set, update,remove } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
@@ -192,6 +197,7 @@ async function renderTable() {
     tbody.innerHTML = "";
 
     let filteredData = [];
+    let alertList = [];
 
     for (let key in allbts) {
 
@@ -214,7 +220,7 @@ async function renderTable() {
     /* ============================= */
     /* ===== CREATE ROWS ========== */
     /* ============================= */
-    filteredData.forEach(btsdata => {
+    filteredData.forEach((btsdata,index) => {
 
         
 
@@ -242,6 +248,25 @@ async function renderTable() {
         revdays = Math.floor(diffTime2 / (1000 * 3600 * 24));
         }
 
+        if (
+            (days !== '' && days <= 365) ||
+            (revdays !== '' && revdays <= 180)
+        ) {
+            alertList.push({
+                // contractcode: btsdata.contractcode || "",
+                // location: btsdata.location || "",
+                // days: days,
+                // revdays: revdays
+                    vendorcode: btsdata.vendorcode || "",
+                    contractcode: btsdata.contractcode || "",
+                    location: btsdata.location || "",
+                    agreeenddate: btsdata.agreeenddate || "",
+                    nextrevisiondate: btsdata.nextrevisiondate || "",
+                    days: days,
+                    revdays: revdays
+            });
+        }
+
 
      
         const row = document.createElement("tr");
@@ -249,15 +274,20 @@ async function renderTable() {
 
 
         row.innerHTML = `
-            
+            <td>${index+1}</td>
             <td style="text-align: center;">${btsdata.vendorcode || ''}</td>
             <td style="text-align: center;">${btsdata.contractcode || ''}</td>
             <td>${btsdata.name || ''}</td>
             <td>${btsdata.location || ''}</td>
             <td style="text-align: center;">
-                <a href="${btsdata.agreeurl}" target="_blank" class="btn btn-primary btn-xs">
-                    Click Here 
-                </a>
+               ${
+        btsdata.agreeurl && btsdata.agreeurl.trim()
+        ? `<a href="${btsdata.agreeurl}" target="_blank" class="btn btn-primary btn-xs">
+                Click Here
+           </a>`
+        : `<span style="color:#999;"> PDF Not Available</span>`
+    }  
+              
             </td>
 
             <td style="text-align: center;">${btsdata.agreestartdate || ''}</td>
@@ -281,9 +311,13 @@ async function renderTable() {
             <td style="text-align: center;">${btsdata.rentrevisioncount || ''}</td>
 
             <td style="text-align: center;">
-                <a href="${btsdata.hpcurl}" target="_blank" class="btn btn-primary btn-xs">
-                    Click Here
-                </a>
+               ${
+              btsdata.hpcurl && btsdata.hpcurl.trim()
+              ? `<a href="${btsdata.hpcurl}" target="_blank" class="btn btn-primary btn-xs">
+                      Click Here
+                </a>`
+              : `<span style="color:#999;">PDF Not Available</span>`
+          }
             </td>
 
             <td style="text-align: center;">${btsdata.nextrevisiondate || ''}</td>
@@ -311,6 +345,161 @@ async function renderTable() {
         tbody.appendChild(row);
     });
     searchcount.innerText = filteredData.length;
+
+    // Show popup only when page first opens
+
+if (!window.popupShown && alertList.length > 0) {
+
+    window.popupShown = true;
+
+    // Sort by Agreement Days
+    alertList.sort((a, b) => a.days - b.days);
+
+    let html = `
+    <div style="margin-bottom:10px;text-align:right">
+        <button id="exportAlert"
+            class="btn btn-success btn-sm">
+            📊 Export to Excel
+        </button>
+    </div>
+
+    <div style="max-height:450px;overflow-y:auto;">
+    <table id="alertTable"
+           class="table table-bordered table-striped">
+
+        <thead style="position:sticky;top:0;background:#0d6efd;color:white;">
+            <tr>
+        <th>SL</th>
+        <th>Vendor</th>
+		<th>Contract Code</th>
+		<th>Location</th>
+		<th>Agreement End</th>
+		<th>Agreement Days Left</th>
+		<th>Revision Date</th>
+		<th>Revision Due Days</th>
+            </tr>
+        </thead>
+
+        <tbody>
+    `;
+
+    alertList.forEach((item,index)=>{
+
+        let rowColor="";
+
+        if(item.days<=180 || item.revdays<=90){
+            rowColor="#ffd6d6";      // Red
+        }
+        else{
+            rowColor="#fff8cc";      // Yellow
+        }
+
+        html+=`
+        <tr style="background:${rowColor}">
+            <td>${index+1}</td>
+	    <td>${item.vendorcode}</td>
+            <td>${item.contractcode}</td>
+            <td>${item.location}</td>
+             <td>${item.agreeenddate}</td>
+            <td align="center">${item.days}</td>
+	    <td>${item.nextrevisiondate}</td>
+            <td align="center">${item.revdays}</td>
+        </tr>
+        `;
+    });
+
+    html+=`
+        </tbody>
+    </table>
+    </div>
+    `;
+
+    Swal.fire({
+
+        title:"Agreements / Revisions Requiring Attention",
+
+        width:1000,
+
+        html:html,
+
+        confirmButtonText:"Close",
+
+        didOpen:()=>{
+
+            document.getElementById("exportAlert").onclick=function(){
+
+                const wb=XLSX.utils.book_new();
+
+                const ws=XLSX.utils.table_to_sheet(
+                    document.getElementById("alertTable")
+                );
+
+                XLSX.utils.book_append_sheet(
+                    wb,
+                    ws,
+                    "Agreement Alert"
+                );
+
+                XLSX.writeFile(
+                    wb,
+                    "Agreement_Revision_Alert.xlsx"
+                );
+            };
+
+        }
+
+    });
+
+}
+
+// if (!window.popupShown && alertList.length > 0) {
+
+//     window.popupShown = true;
+
+//     let html = `
+//     <div style="max-height:450px;overflow-y:auto;">
+//     <table class="table table-bordered table-striped">
+//         <thead style="position:sticky;top:0;background:white;">
+//             <tr>
+//                 <th style="text-align: center;">Sl</th>
+//                 <th style="text-align: center;">Contract Code</th>
+//                 <th style="text-align: center;">Location</th>
+//                 <th style="text-align: center;">Agreement<br>Days Left</th>
+//                 <th style="text-align: center;">Revision<br>Due In</th>
+//             </tr>
+//         </thead>
+//         <tbody>`;
+
+//     alertList.sort((a, b) => a.days - b.days);
+
+//     alertList.forEach((item, index) => {
+//         html += `
+//         <tr>
+//             <td>${index + 1}</td>
+//             <td>${item.contractcode}</td>
+//             <td>${item.location}</td>
+//             <td style="text-align:center;">
+//                 ${item.days}
+//             </td>
+//             <td style="text-align:center;">
+//                 ${item.revdays}
+//             </td>
+//         </tr>`;
+//     });
+
+//     html += `
+//         </tbody>
+//     </table>
+//     </div>`;
+
+//     Swal.fire({
+//         icon: "warning",
+//         title: "Agreements / Revisions Need Attention",
+//         width: "900px",
+//         html: html,
+//         confirmButtonText: "OK"
+//     });
+// }
 }
 
 
@@ -343,7 +532,7 @@ window.editBts = function (btsdata) {
                 <input id="swal_rr" class="swal2-input" value="${btsdata.rentrevisioncount || ''}" style="margin:0;">
             </label>
         <label><span style="color: red;">Next Revision Date: </span>
-                <input id="swal_nextrevdate" class="swal2-input" value="${btsdata.nextrevisiondate || ''}" style="margin:0;">
+                <input id="swal_nextrevdate" type= "date" class="swal2-input" value="${btsdata.nextrevisiondate || ''}" style="margin:0;">
             </label>
 
         <label><span style="color: red;">Agreement PDF URL: </span>
@@ -359,7 +548,11 @@ window.editBts = function (btsdata) {
     showCancelButton: true,
     confirmButtonText: 'Update',
     preConfirm: async () => {
-      console.log("Updating", btsdata.key);
+       function formatDateDDMMYYYY(dateStr) {
+      if (!dateStr) return "";
+      const [year, month, day] = dateStr.split("-");
+      return `${day}-${month}-${year}`;
+      }
 
       const key = btsdata.key; // locked
       const name = document.getElementById('swal_name').value.trim();
@@ -367,7 +560,7 @@ window.editBts = function (btsdata) {
       const monthlyrent = String(document.getElementById('swal_monthlyrent').value.trim());
       const wwcharge = String(document.getElementById('swal_ww').value.trim());
       const rr = String(document.getElementById('swal_rr').value.trim());
-      const nextrevdate = document.getElementById('swal_nextrevdate').value.trim();
+      const nextrevdate = formatDateDDMMYYYY(document.getElementById('swal_nextrevdate').value.trim());
       const agreeurl = document.getElementById('swal_agreeurl').value.trim();
       const hpcurl = document.getElementById('swal_hpcurl').value.trim();
       
@@ -500,7 +693,7 @@ btnAddEntry.addEventListener("click", async () => {
   if (!dateStr) return "";
   const [year, month, day] = dateStr.split("-");
   return `${day}-${month}-${year}`;
-}
+  }
       
   const key = String(document.getElementById('contractcode').value.trim());
   const name = document.getElementById('name').value.trim();
@@ -569,12 +762,29 @@ btnAddEntry.addEventListener("click", async () => {
 /* ============================= */
 document.getElementById("exportBtn").addEventListener("click", function () {
 
-    $("#bts-table").table2excel({
-        exclude: ".noExl",
-        name: "BTS Report",
-        filename: "BTS_Report",
-        fileext: ".xls"
-    });
+    // $("#bts-table").table2excel({
+    //     exclude: ".noExl",
+    //     name: "BTS Report",
+    //     filename: "BTS_Report",
+    //     fileext: ".xls"
+    // });
+
+     const wb=XLSX.utils.book_new();
+
+                const ws=XLSX.utils.table_to_sheet(
+                    document.getElementById("bts-table")
+                );
+
+                XLSX.utils.book_append_sheet(
+                    wb,
+                    ws,
+                    "Rented_NBSNL_BTS"
+                );
+
+                XLSX.writeFile(
+                    wb,
+                    "Rented_NBSNL_BTS.xlsx"
+                );
 
 });
 
