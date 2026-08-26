@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Rotational Transfer Management</title>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+body{background:#f3f6f9;font-family:Arial,Helvetica,sans-serif}
+.header-box,.filter-box,.table-box{background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.header-box{padding:20px;margin-bottom:15px}
+.header-title{margin:0;font-size:25px;font-weight:bold;color:#26384a}
+.header-subtitle{color:#777;margin-top:6px}
+.filter-box{padding:15px;margin-bottom:15px}
+.table-box{padding:15px;margin-bottom:15px}
+.stats-box{background:#fff;text-align:center;padding:12px;border-radius:7px;border:1px solid #ddd;margin-bottom:15px}
+.stats-number{font-size:22px;font-weight:bold}
+.stats-label{font-size:12px;color:#777}
+.form-section-title{font-size:15px;font-weight:bold;color:#34495e;border-bottom:1px solid #ddd;padding-bottom:6px;margin:15px 0}
+.action-btn{margin:2px}
+.badge-hq,.badge-outside,.badge-exempt,.badge-normal{color:#fff;padding:5px 9px;border-radius:12px;display:inline-block}
+.badge-hq{background:#337ab7}
+.badge-outside{background:#5cb85c}
+.badge-exempt{background:#d9534f}
+.badge-normal{background:#777}
+.tenure{font-weight:bold}
+.long-tenure{color:#c0392b}
+.medium-tenure{color:#d68910}
+.short-tenure{color:#27ae60}
+.priority-high{color:#c0392b;font-weight:bold}
+.priority-medium{color:#d68910;font-weight:bold}
+.priority-low{color:#27ae60;font-weight:bold}
+.designation-row{background:#eaf0f6!important;font-weight:bold;color:#34495e}
+.exempt-row{background:#fff3f3!important}
+.hq-row{background:#f7fbff!important}
+
+/* TABLE SCROLL AREA */
+.table-container{position:relative;height:470px;overflow:auto;border:1px solid #ddd;border-radius:5px;background:#fff}
+#employeeTable{margin:0;min-width:1850px}
+
+/* STICKY TABLE HEADER */
+#employeeTable thead th{position:sticky;top:0;z-index:6;background:#34495e;color:#fff;text-align:center;vertical-align:middle;white-space:nowrap;height:45px}
+
+/* STICKY EMPLOYEE NAME */
+#employeeTable th.name-col,#employeeTable td.name-col{position:sticky;left:0;z-index:4;min-width:180px;max-width:180px;box-shadow:4px 0 6px rgba(0,0,0,.10)}
+#employeeTable th.name-col{z-index:9;background:#34495e;color:#fff}
+
+/* STICKY ACTION */
+#employeeTable th.action-col,#employeeTable td.action-col{position:sticky;right:0;z-index:4;min-width:165px;max-width:165px;background:#fff;box-shadow:-4px 0 6px rgba(0,0,0,.10)}
+#employeeTable th.action-col{z-index:9;background:#34495e;color:#fff}
+
+/* STICKY CELL BACKGROUNDS */
+#employeeTable tbody tr.hq-row td.name-col,#employeeTable tbody tr.hq-row td.action-col{background:#f7fbff!important}
+#employeeTable tbody tr.exempt-row td.name-col,#employeeTable tbody tr.exempt-row td.action-col{background:#fff3f3!important}
+#employeeTable tbody tr.designation-row td.name-col,#employeeTable tbody tr.designation-row td.action-col{background:#eaf0f6!important}
+
+/* SCROLLBAR */
+.table-container::-webkit-scrollbar{width:11px;height:11px}
+.table-container::-webkit-scrollbar-track{background:#f1f1f1}
+.table-container::-webkit-scrollbar-thumb{background:#aaa;border-radius:6px}
+.table-container::-webkit-scrollbar-thumb:hover{background:#777}
+
+/* MODAL */
+.modal-header{background:#34495e;color:#fff;border-radius:6px 6px 0 0}
+.modal-header .close{color:#fff;opacity:.9}
+.details-popup{text-align:left;font-size:14px}
+.details-title{font-weight:bold;color:#34495e;margin-bottom:5px}
+.details-content{background:#f7f7f7;border:1px solid #ddd;border-radius:5px;padding:10px;margin-bottom:15px;white-space:pre-wrap;word-break:break-word}
+
+@media(max-width:768px){
+.header-title{font-size:20px}
+.table-container{height:450px}
+#employeeTable{min-width:1750px}
+#employeeTable th.name-col,#employeeTable td.name-col{min-width:150px;max-width:150px}
+#employeeTable th.action-col,#employeeTable td.action-col{min-width:145px;max-width:145px}
+}
+</style>
+</head>
+<body>
+
+<div class="container-fluid">
+
+<div class="header-box">
+<div class="row">
+<div class="col-md-8">
+<h2 class="header-title"><i class="fa fa-users"></i> Rotational Transfer Management</h2>
+<div class="header-subtitle">Employee list arranged according to current-location tenure and designation</div>
+</div>
+<div class="col-md-4 text-right">
+<b>As on:</b> <span id="currentDate"></span><br><br>
+<button class="btn btn-primary" onclick="openAddEmployee()"><i class="fa fa-plus"></i> Add Employee</button>
+<button class="btn btn-success" onclick="exportExcel()"><i class="fa fa-file-excel-o"></i> Export Excel</button>
+</div>
+</div>
+</div>
+
+<div class="row">
+
+<div class="col-md-3 col-sm-6">
+<div class="stats-box">
+<div id="totalEmployees" class="stats-number">0</div>
+<div class="stats-label">TOTAL EMPLOYEES</div>
+</div>
+</div>
+
+<div class="col-md-3 col-sm-6">
+<div class="stats-box">
+<div id="totalHQ" class="stats-number">0</div>
+<div class="stats-label">HQ EMPLOYEES</div>
+</div>
+</div>
+
+<div class="col-md-3 col-sm-6">
+<div class="stats-box">
+<div id="totalOutside" class="stats-number">0</div>
+<div class="stats-label">OUTSIDE EMPLOYEES</div>
+</div>
+</div>
+
+<div class="col-md-3 col-sm-6">
+<div class="stats-box">
+<div id="totalExempted" class="stats-number">0</div>
+<div class="stats-label">EXEMPTED</div>
+</div>
+</div>
+
+</div>
+
+<div class="filter-box">
+
+<div class="row">
+
+<div class="col-md-3">
+<label>Search</label>
+<input type="text" id="searchBox" class="form-control" placeholder="Name / Emp ID / Location / Designation" onkeyup="applyFilter()">
+</div>
+
+<div class="col-md-2">
+<label>Location Type</label>
+<select id="locationFilter" class="form-control" onchange="applyFilter()">
+<option value="ALL">All</option>
+<option value="HQ">HQ</option>
+<option value="Outside">Outside</option>
+</select>
+</div>
+
+<div class="col-md-2">
+<label>Gender</label>
+<select id="genderFilter" class="form-control" onchange="applyFilter()">
+<option value="ALL">All</option>
+<option value="Male">Male</option>
+<option value="Female">Female</option>
+<option value="Other">Other</option>
+</select>
+</div>
+
+<div class="col-md-2">
+<label>Designation</label>
+<select id="designationFilter" class="form-control" onchange="applyFilter()">
+<option value="ALL">All Designations</option>
+</select>
+</div>
+
+<div class="col-md-2">
+<label>Exemption</label>
+<select id="exemptionFilter" class="form-control" onchange="applyFilter()">
+<option value="ALL">All</option>
+<option value="No">Not Exempted</option>
+<option value="Yes">Exempted</option>
+</select>
+</div>
+
+<div class="col-md-1">
+<label>&nbsp;</label>
+<button class="btn btn-default btn-block" onclick="resetFilters()"><i class="fa fa-refresh"></i></button>
+</div>
+
+</div>
+
+<br>
+
+<div class="row">
+
+<div class="col-md-4">
+<label>Sort / Transfer Arrangement</label>
+<select id="sortFilter" class="form-control" onchange="applyFilter()">
+<option value="TENURE">HQ Tenure - Longest First</option>
+<option value="DESIGNATION_TENURE">Designation-wise + Tenure</option>
+<option value="DESIGNATION_NAME">Designation-wise + Name</option>
+<option value="JOINING">Current Location Joining Date - Oldest First</option>
+<option value="NAME">Name</option>
+<option value="AGE">Age - Highest First</option>
+</select>
+</div>
+
+<div class="col-md-4">
+<label>Table Navigation</label>
+<div style="padding-top:5px;color:#777">
+<i class="fa fa-arrows-h"></i> Horizontal scroll &nbsp;&nbsp;
+<i class="fa fa-arrows-v"></i> Vertical scroll
+</div>
+</div>
+
+</div>
+
+</div>
+
+<div class="table-box">
+
+<div class="table-container">
+
+<table id="employeeTable" class="table table-bordered table-hover">
+
+<thead>
+<tr>
+<th>Sl.</th>
+<th class="name-col">Employee Name</th>
+<th>Employee ID</th>
+<th>Gender</th>
+<th>Designation</th>
+<th>Section</th>
+<th>Date of Birth</th>
+<th>Age</th>
+<th>Joining Date<br>Current Location</th>
+<th>Current Location</th>
+<th>Type</th>
+<th>Stay at Location</th>
+<th>Exemption</th>
+<th>Priority</th>
+<th>Transfer Status</th>
+<th>Details</th>
+<th class="action-col">Action</th>
+</tr>
+</thead>
+
+<tbody id="employeeTableBody">
+<tr>
+<td colspan="17" class="text-center">
+<i class="fa fa-spinner fa-spin"></i> Loading employees...
+</td>
+</tr>
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+<!-- ADD / EDIT MODAL -->
+
+<div id="employeeModal" class="modal fade" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+
+<div class="modal-header">
+<button type="button" class="close" data-dismiss="modal">&times;</button>
+<h4 class="modal-title" id="employeeModalTitle"><i class="fa fa-user-plus"></i> Add Employee</h4>
+</div>
+
+<div class="modal-body">
+
+<form id="employeeForm">
+<input type="hidden" id="employeeFirebaseKey">
+
+<div class="form-section-title"><i class="fa fa-user"></i> Personal Details</div>
+
+<div class="row">
+
+<div class="col-md-6">
+<div class="form-group">
+<label>Employee Name <span class="text-danger">*</span></label>
+<input type="text" id="empName" class="form-control" required>
+</div>
+</div>
+
+<div class="col-md-3">
+<div class="form-group">
+<label>Employee ID <span class="text-danger">*</span></label>
+<input type="text" id="empId" class="form-control" required>
+</div>
+</div>
+
+<div class="col-md-3">
+<div class="form-group">
+<label>Gender <span class="text-danger">*</span></label>
+<select id="empGender" class="form-control" required>
+<option value="">Select</option>
+<option value="Male">Male</option>
+<option value="Female">Female</option>
+<option value="Other">Other</option>
+</select>
+</div>
+</div>
+
+</div>
+
+<div class="row">
+
+<div class="col-md-4">
+<div class="form-group">
+<label>Designation <span class="text-danger">*</span></label>
+<select id="empDesignation" class="form-control" required>
+<option value="">Select Designation</option>
+</select>
+</div>
+</div>
+
+<div class="col-md-4">
+<div class="form-group">
+<label>Section</label>
+<input type="text" id="empSection" class="form-control">
+</div>
+</div>
+
+<div class="col-md-4">
+<div class="form-group">
+<label>Date of Birth</label>
+<input type="text" id="empDOB" class="form-control" placeholder="DD-MM-YYYY">
+</div>
+</div>
+
+</div>
+
+<div class="form-section-title"><i class="fa fa-map-marker"></i> Current Posting Details</div>
+
+<div class="row">
+
+<div class="col-md-4">
+<div class="form-group">
+<label>Current Location <span class="text-danger">*</span></label>
+<input type="text" id="empLocation" class="form-control" required>
+</div>
+</div>
+
+<div class="col-md-4">
+<div class="form-group">
+<label>Location Type <span class="text-danger">*</span></label>
+<select id="empLocationType" class="form-control" required>
+<option value="">Select</option>
+<option value="HQ">HQ</option>
+<option value="Outside">Outside</option>
+</select>
+</div>
+</div>
+
+<div class="col-md-4">
+<div class="form-group">
+<label>Joining Date at Current Location</label>
+<input type="text" id="empJoiningDate" class="form-control" placeholder="DD-MM-YYYY">
+</div>
+</div>
+
+</div>
+
+<div class="form-section-title"><i class="fa fa-exchange"></i> Transfer Details</div>
+
+<div class="row">
+
+<div class="col-md-4">
+<div class="form-group">
+<label>Exemption</label>
+<select id="empExemption" class="form-control">
+<option value="No">No</option>
+<option value="Yes">Yes</option>
+</select>
+</div>
+</div>
+
+<div class="col-md-4">
+<div class="form-group">
+<label>Transfer Status</label>
+<select id="empTransferStatus" class="form-control">
+<option value="Not Transferred">Not Transferred</option>
+<option value="Transfer Proposed">Transfer Proposed</option>
+<option value="Transferred">Transferred</option>
+<option value="Retained">Retained</option>
+</select>
+</div>
+</div>
+
+<div class="col-md-4">
+<div class="form-group">
+<label>Remark</label>
+<textarea id="empRemark" class="form-control" rows="2" placeholder="Enter remark"></textarea>
+</div>
+</div>
+
+</div>
+
+<div class="row">
+<div class="col-md-12">
+<div class="form-group">
+<label>Exemption Reason</label>
+<textarea id="empExemptionReason" class="form-control" rows="3" placeholder="Enter reason for exemption"></textarea>
+</div>
+</div>
+</div>
+
+</form>
+
+</div>
+
+<div class="modal-footer">
+<button type="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
+<button type="button" class="btn btn-primary" onclick="saveEmployee()"><i class="fa fa-save"></i> Save Employee</button>
+</div>
+
+</div>
+</div>
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<script type="module">
+
+import{getDatabase,ref,onValue,set,update,remove,push}from"https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+import{app}from"./firebase-config.js";
+
+const db=getDatabase(app);
+const employeeRef=ref(db,"employees");
+let allEmployees=[];
+
+const DESIGNATIONS=[
+"JTO","SDE","AGM","DGM","GM","SCS","STENO","JA","JSA","LDC","UDC","MTS","Technician","Other"
+];
+
+document.getElementById("currentDate").innerText=formatDate(new Date());
+
+function initializeDesignationDropdown(){
+const select=document.getElementById("empDesignation");
+select.innerHTML='<option value="">Select Designation</option>';
+DESIGNATIONS.forEach(designation=>{
+const option=document.createElement("option");
+option.value=designation;
+option.textContent=designation;
+select.appendChild(option);
+});
+}
+
+flatpickr("#empDOB",{dateFormat:"d-m-Y",allowInput:true,disableMobile:true});
+flatpickr("#empJoiningDate",{dateFormat:"d-m-Y",allowInput:true,disableMobile:true});
+initializeDesignationDropdown();
+
+onValue(employeeRef,snapshot=>{
+const data=snapshot.val()||{};
+allEmployees=[];
+for(const key in data){
+const employee=data[key];
+employee.firebaseKey=key;
+allEmployees.push(employee);
+}
+updateStatistics();
+createDesignationFilter();
+applyFilter();
+});
+
+window.openAddEmployee=function(){
+document.getElementById("employeeForm").reset();
+document.getElementById("employeeFirebaseKey").value="";
+document.getElementById("employeeModalTitle").innerHTML='<i class="fa fa-user-plus"></i> Add Employee';
+$("#employeeModal").modal("show");
+};
+
+window.openEditEmployee=function(firebaseKey){
+const employee=allEmployees.find(emp=>emp.firebaseKey===firebaseKey);
+
+if(!employee){
+Swal.fire({icon:"error",title:"Employee Not Found",text:"The employee record could not be found."});
+return;
+}
+
+document.getElementById("employeeFirebaseKey").value=firebaseKey;
+document.getElementById("empName").value=employee.name||"";
+document.getElementById("empId").value=employee.empId||"";
+document.getElementById("empGender").value=employee.gender||"";
+document.getElementById("empDesignation").value=employee.designation||"";
+document.getElementById("empSection").value=employee.section||"";
+document.getElementById("empDOB").value=employee.dateOfBirth||"";
+document.getElementById("empLocation").value=employee.location||"";
+document.getElementById("empLocationType").value=employee.locationType||"";
+document.getElementById("empJoiningDate").value=employee.joiningDateCurrentLocation||"";
+document.getElementById("empExemption").value=employee.exemption||"No";
+document.getElementById("empExemptionReason").value=employee.exemptionReason||"";
+document.getElementById("empTransferStatus").value=employee.transferStatus||"Not Transferred";
+document.getElementById("empRemark").value=employee.remark||"";
+
+document.getElementById("employeeModalTitle").innerHTML='<i class="fa fa-pencil"></i> Edit Employee';
+$("#employeeModal").modal("show");
+};
+
+window.saveEmployee=async function(){
+
+const form=document.getElementById("employeeForm");
+
+if(!form.checkValidity()){
+Swal.fire({icon:"warning",title:"Incomplete Information",text:"Please fill all mandatory fields."});
+form.reportValidity();
+return;
+}
+
+const firebaseKey=document.getElementById("employeeFirebaseKey").value.trim();
+
+const employeeData={
+name:document.getElementById("empName").value.trim(),
+empId:document.getElementById("empId").value.trim(),
+gender:document.getElementById("empGender").value,
+designation:document.getElementById("empDesignation").value,
+section:document.getElementById("empSection").value.trim(),
+dateOfBirth:document.getElementById("empDOB").value.trim(),
+location:document.getElementById("empLocation").value.trim(),
+locationType:document.getElementById("empLocationType").value,
+joiningDateCurrentLocation:document.getElementById("empJoiningDate").value.trim(),
+exemption:document.getElementById("empExemption").value,
+exemptionReason:document.getElementById("empExemptionReason").value.trim(),
+remark:document.getElementById("empRemark").value.trim(),
+transferStatus:document.getElementById("empTransferStatus").value
+};
+
+try{
+
+if(firebaseKey){
+
+await update(ref(db,"employees/"+firebaseKey),employeeData);
+$("#employeeModal").modal("hide");
+
+await Swal.fire({icon:"success",title:"Updated",text:"Employee details updated successfully.",timer:1600,showConfirmButton:false});
+
+}else{
+
+const newEmployeeRef=push(employeeRef);
+await set(newEmployeeRef,employeeData);
+$("#employeeModal").modal("hide");
+
+await Swal.fire({icon:"success",title:"Added",text:"Employee added successfully.",timer:1600,showConfirmButton:false});
+
+}
+
+}catch(error){
+
+console.error("Firebase save error:",error);
+
+Swal.fire({icon:"error",title:"Unable to Save",text:error.message||"An error occurred while saving the employee."});
+
+}
+
+};
+
+window.deleteEmployee=async function(firebaseKey){
+
+const employee=allEmployees.find(emp=>emp.firebaseKey===firebaseKey);
+
+if(!employee){
+Swal.fire({icon:"error",title:"Employee Not Found",text:"The employee record could not be found."});
+return;
+}
+
+const result=await Swal.fire({
+icon:"warning",
+title:"Delete Employee?",
+html:"<b>Name:</b> "+escapeHtml(employee.name||"")+"<br><b>Employee ID:</b> "+escapeHtml(employee.empId||"")+"<br><b>Designation:</b> "+escapeHtml(employee.designation||"")+"<br><br><span style='color:#d33'>This action cannot be undone.</span>",
+showCancelButton:true,
+confirmButtonText:"Yes, Delete",
+cancelButtonText:"Cancel",
+confirmButtonColor:"#d33",
+cancelButtonColor:"#6c757d",
+reverseButtons:true
+});
+
+if(!result.isConfirmed)return;
+
+try{
+
+await remove(ref(db,"employees/"+firebaseKey));
+
+await Swal.fire({icon:"success",title:"Deleted",text:"Employee deleted successfully.",timer:1600,showConfirmButton:false});
+
+}catch(error){
+
+console.error("Firebase delete error:",error);
+
+Swal.fire({icon:"error",title:"Unable to Delete",text:error.message||"An error occurred while deleting the employee."});
+
+}
+
+};
+
+window.viewEmployeeDetails=function(firebaseKey){
+
+const employee=allEmployees.find(emp=>emp.firebaseKey===firebaseKey);
+
+if(!employee){
+Swal.fire({icon:"error",title:"Employee Not Found",text:"The employee record could not be found."});
+return;
+}
+
+const remark=employee.remark?escapeHtml(employee.remark):'<span style="color:#999">No remark available</span>';
+const exemptionReason=employee.exemptionReason?escapeHtml(employee.exemptionReason):'<span style="color:#999">No exemption reason available</span>';
+
+Swal.fire({
+title:"Employee Details",
+width:700,
+html:`
+<div class="details-popup">
+<div style="margin-bottom:15px">
+<b style="font-size:16px">${escapeHtml(employee.name||"")}</b>
+<br>
+<span style="color:#777">${escapeHtml(employee.empId||"")} | ${escapeHtml(employee.designation||"")}</span>
+</div>
+<div class="details-title"><i class="fa fa-info-circle"></i> Remark</div>
+<div class="details-content">${remark}</div>
+<div class="details-title"><i class="fa fa-exclamation-circle"></i> Exemption Reason</div>
+<div class="details-content">${exemptionReason}</div>
+</div>`,
+confirmButtonText:"Close",
+confirmButtonColor:"#34495e"
+});
+
+};
+
+function createDesignationFilter(){
+
+const select=document.getElementById("designationFilter");
+const oldValue=select.value;
+
+const designations=[...new Set(allEmployees.map(emp=>emp.designation).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));
+
+select.innerHTML='<option value="ALL">All Designations</option>';
+
+designations.forEach(designation=>{
+const option=document.createElement("option");
+option.value=designation;
+option.textContent=designation;
+select.appendChild(option);
+});
+
+if(designations.includes(oldValue))select.value=oldValue;
+
+}
+
+window.applyFilter=function(){
+
+let employees=[...allEmployees];
+
+const search=document.getElementById("searchBox").value.trim().toLowerCase();
+const locationType=document.getElementById("locationFilter").value;
+const gender=document.getElementById("genderFilter").value;
+const designation=document.getElementById("designationFilter").value;
+const exemption=document.getElementById("exemptionFilter").value;
+const sort=document.getElementById("sortFilter").value;
+
+if(search){
+employees=employees.filter(emp=>
+String(emp.name||"").toLowerCase().includes(search)||
+String(emp.empId||"").toLowerCase().includes(search)||
+String(emp.location||"").toLowerCase().includes(search)||
+String(emp.designation||"").toLowerCase().includes(search)||
+String(emp.section||"").toLowerCase().includes(search)
+);
+}
+
+if(locationType!=="ALL"){
+employees=employees.filter(emp=>String(emp.locationType||"").toLowerCase()===locationType.toLowerCase());
+}
+
+if(gender!=="ALL"){
+employees=employees.filter(emp=>String(emp.gender||"").toLowerCase()===gender.toLowerCase());
+}
+
+if(designation!=="ALL"){
+employees=employees.filter(emp=>String(emp.designation||"")===designation);
+}
+
+if(exemption!=="ALL"){
+employees=employees.filter(emp=>String(emp.exemption||"").toLowerCase()===exemption.toLowerCase());
+}
+
+if(sort==="TENURE"){
+
+employees.sort((a,b)=>{
+const aHQ=isHQ(a),bHQ=isHQ(b);
+if(aHQ&&!bHQ)return -1;
+if(!aHQ&&bHQ)return 1;
+return getDate(a.joiningDateCurrentLocation)-getDate(b.joiningDateCurrentLocation);
+});
+
+}else if(sort==="DESIGNATION_TENURE"){
+
+employees.sort((a,b)=>{
+const designationCompare=String(a.designation||"").localeCompare(String(b.designation||""));
+if(designationCompare!==0)return designationCompare;
+const aHQ=isHQ(a),bHQ=isHQ(b);
+if(aHQ&&!bHQ)return -1;
+if(!aHQ&&bHQ)return 1;
+return getDate(a.joiningDateCurrentLocation)-getDate(b.joiningDateCurrentLocation);
+});
+
+}else if(sort==="DESIGNATION_NAME"){
+
+employees.sort((a,b)=>{
+const designationCompare=String(a.designation||"").localeCompare(String(b.designation||""));
+if(designationCompare!==0)return designationCompare;
+return String(a.name||"").localeCompare(String(b.name||""));
+});
+
+}else if(sort==="JOINING"){
+
+employees.sort((a,b)=>getDate(a.joiningDateCurrentLocation)-getDate(b.joiningDateCurrentLocation));
+
+}else if(sort==="NAME"){
+
+employees.sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")));
+
+}else if(sort==="AGE"){
+
+employees.sort((a,b)=>getDate(a.dateOfBirth)-getDate(b.dateOfBirth));
+
+}
+
+displayEmployees(employees,sort);
+
+};
+
+function displayEmployees(employees,sortType){
+
+const tbody=document.getElementById("employeeTableBody");
+tbody.innerHTML="";
+
+if(employees.length===0){
+
+tbody.innerHTML='<tr><td colspan="17" class="text-center">No employees found.</td></tr>';
+return;
+
+}
+
+let previousDesignation="";
+let serial=0;
+
+employees.forEach(emp=>{
+
+if(sortType==="DESIGNATION_TENURE"||sortType==="DESIGNATION_NAME"){
+
+if(previousDesignation!==emp.designation){
+
+const groupRow=document.createElement("tr");
+groupRow.className="designation-row";
+groupRow.innerHTML='<td colspan="17"><i class="fa fa-briefcase"></i> &nbsp; Designation: <strong>'+escapeHtml(emp.designation||"")+'</strong></td>';
+tbody.appendChild(groupRow);
+previousDesignation=emp.designation;
+
+}
+
+}
+
+serial++;
+
+const tenure=calculateTenure(emp.joiningDateCurrentLocation);
+const age=calculateAge(emp.dateOfBirth);
+const hq=isHQ(emp);
+const exempt=String(emp.exemption||"").toLowerCase()==="yes";
+const priority=getPriority(emp,tenure);
+
+const row=document.createElement("tr");
+
+if(exempt)row.className="exempt-row";
+else if(hq)row.className="hq-row";
+
+row.innerHTML=`
+
+<td class="text-center">${serial}</td>
+
+<td class="name-col"><strong>${escapeHtml(emp.name||"")}</strong></td>
+
+<td class="text-center">${escapeHtml(emp.empId||"")}</td>
+
+<td class="text-center">${getGenderDisplay(emp.gender)}</td>
+
+<td class="text-center">${escapeHtml(emp.designation||"")}</td>
+
+<td>${escapeHtml(emp.section||"")}</td>
+
+<td class="text-center">${formatDateString(emp.dateOfBirth)}</td>
+
+<td class="text-center">${age}</td>
+
+<td class="text-center">${formatDateString(emp.joiningDateCurrentLocation)}</td>
+
+<td>${escapeHtml(emp.location||"")}</td>
+
+<td class="text-center">${hq?'<span class="badge-hq">HQ</span>':'<span class="badge-outside">Outside</span>'}</td>
+
+<td class="text-center"><span class="tenure ${getTenureClass(tenure)}">${tenure}</span></td>
+
+<td class="text-center">${exempt?'<span class="badge-exempt">YES</span>':'<span class="badge-normal">NO</span>'}</td>
+
+<td class="text-center">${priority}</td>
+
+<td class="text-center">${escapeHtml(emp.transferStatus||"Not Transferred")}</td>
+
+<td class="text-center">
+<button class="btn btn-xs btn-info action-btn" onclick="viewEmployeeDetails('${emp.firebaseKey}')" title="View Remark and Exemption Reason">
+<i class="fa fa-eye"></i> VIEW
+</button>
+</td>
+
+<td class="text-center action-col">
+
+<button class="btn btn-xs btn-primary action-btn" onclick="openEditEmployee('${emp.firebaseKey}')" title="Edit Employee">
+<i class="fa fa-pencil"></i> Edit
+</button>
+
+<button class="btn btn-xs btn-danger action-btn" onclick="deleteEmployee('${emp.firebaseKey}')" title="Delete Employee">
+<i class="fa fa-trash"></i> Delete
+</button>
+
+</td>
+
+`;
+
+tbody.appendChild(row);
+
+});
+
+}
+
+function getGenderDisplay(gender){
+
+const value=String(gender||"").toLowerCase();
+
+if(value==="male")return'<span class="label label-primary">Male</span>';
+if(value==="female")return'<span class="label label-danger">Female</span>';
+if(value==="other")return'<span class="label label-default">Other</span>';
+
+return"-";
+
+}
+
+function isHQ(emp){
+return String(emp.locationType||"").toLowerCase()==="hq";
+}
+
+function getDate(dateString){
+
+if(!dateString)return new Date(NaN);
+
+const parts=String(dateString).split("-");
+
+if(parts.length!==3)return new Date(NaN);
+
+const day=Number(parts[0]);
+const month=Number(parts[1]);
+const year=Number(parts[2]);
+
+return new Date(year,month-1,day);
+
+}
+
+function formatDateString(dateString){
+
+const date=getDate(dateString);
+
+if(isNaN(date.getTime()))return"";
+
+return String(date.getDate()).padStart(2,"0")+"-"+String(date.getMonth()+1).padStart(2,"0")+"-"+date.getFullYear();
+
+}
+
+function formatDate(date){
+
+return String(date.getDate()).padStart(2,"0")+"-"+String(date.getMonth()+1).padStart(2,"0")+"-"+date.getFullYear();
+
+}
+
+function calculateTenure(dateString){
+
+const start=getDate(dateString);
+
+if(isNaN(start.getTime()))return"N/A";
+
+const today=new Date();
+
+let years=today.getFullYear()-start.getFullYear();
+let months=today.getMonth()-start.getMonth();
+let days=today.getDate()-start.getDate();
+
+if(days<0){
+months--;
+const previousMonth=new Date(today.getFullYear(),today.getMonth(),0);
+days+=previousMonth.getDate();
+}
+
+if(months<0){
+years--;
+months+=12;
+}
+
+return`${years} Y ${months} M ${days} D`;
+
+}
+
+function calculateAge(dateString){
+
+const dob=getDate(dateString);
+
+if(isNaN(dob.getTime()))return"N/A";
+
+const today=new Date();
+
+let age=today.getFullYear()-dob.getFullYear();
+const month=today.getMonth()-dob.getMonth();
+
+if(month<0||(month===0&&today.getDate()<dob.getDate()))age--;
+
+return age;
+
+}
+
+function getTenureClass(tenure){
+
+const years=parseInt(tenure.split(" ")[0]);
+
+if(years>=8)return"long-tenure";
+if(years>=5)return"medium-tenure";
+
+return"short-tenure";
+
+}
+
+function getPriority(emp,tenure){
+
+if(String(emp.exemption||"").toLowerCase()==="yes")return'<span class="priority-low">EXEMPTED</span>';
+
+if(!isHQ(emp))return'<span class="priority-low">OUTSIDE</span>';
+
+const years=parseInt(tenure.split(" ")[0]);
+
+if(years>=8)return'<span class="priority-high">HIGH</span>';
+if(years>=5)return'<span class="priority-medium">MEDIUM</span>';
+
+return'<span class="priority-low">LOW</span>';
+
+}
+
+function updateStatistics(){
+
+const total=allEmployees.length;
+const hq=allEmployees.filter(emp=>isHQ(emp)).length;
+const outside=allEmployees.filter(emp=>!isHQ(emp)).length;
+const exempted=allEmployees.filter(emp=>String(emp.exemption||"").toLowerCase()==="yes").length;
+
+document.getElementById("totalEmployees").innerText=total;
+document.getElementById("totalHQ").innerText=hq;
+document.getElementById("totalOutside").innerText=outside;
+document.getElementById("totalExempted").innerText=exempted;
+
+}
+
+window.resetFilters=function(){
+
+document.getElementById("searchBox").value="";
+document.getElementById("locationFilter").value="ALL";
+document.getElementById("genderFilter").value="ALL";
+document.getElementById("designationFilter").value="ALL";
+document.getElementById("exemptionFilter").value="ALL";
+document.getElementById("sortFilter").value="TENURE";
+
+applyFilter();
+
+};
+
+function escapeHtml(value){
+
+return String(value)
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+
+}
+
+window.exportExcel=function(){
+
+const table=document.getElementById("employeeTable");
+const workbook=XLSX.utils.table_to_book(table,{sheet:"Rotational Transfer"});
+XLSX.writeFile(workbook,"Rotational_Transfer_Employee_List.xlsx");
+
+};
+
+</script>
+</body>
+</html>

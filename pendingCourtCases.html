@@ -1,0 +1,1622 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pending Court Cases</title>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+    <style>
+        body {
+            background: #f4f6f9;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        .page-container {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.12);
+        }
+
+        .page-title {
+            margin: 0 0 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        #searchBox {
+            width: 320px;
+            max-width: 100%;
+        }
+
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            max-height: 650px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+        }
+
+        #caseTable {
+            margin: 0;
+            min-width: 1500px;
+        }
+
+        #caseTable thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #34495e;
+            color: white;
+            white-space: nowrap;
+            text-align: center;
+            vertical-align: middle;
+            border-color: #2c3e50;
+        }
+
+        #caseTable tbody td {
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        #caseTable tbody tr:hover {
+            background: #f1f8ff;
+        }
+
+        .date-near {
+            background: #fff3cd !important;
+            font-weight: bold;
+        }
+
+        .date-overdue {
+            background: #f8d7da !important;
+            color: #842029;
+            font-weight: bold;
+        }
+
+        .btn-action {
+            margin: 2px;
+        }
+
+        .status-cell {
+            white-space: normal !important;
+            min-width: 180px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 30px;
+            font-size: 18px;
+            color: #777;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 30px;
+            color: #777;
+            font-size: 16px;
+        }
+
+        .case-details-popup {
+            text-align: left;
+        }
+
+        .case-info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        .case-info-table td {
+            padding: 7px 8px;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+
+        .case-info-table td:first-child {
+            width: 180px;
+            font-weight: bold;
+            color: #34495e;
+        }
+
+        .details-box {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            text-align: left;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+        }
+
+        .required {
+            color: red;
+        }
+
+        .sort-indicator {
+            font-size: 11px;
+            margin-left: 3px;
+        }
+
+        .summary-box {
+            margin-bottom: 15px;
+        }
+
+        .summary-box .label {
+            font-size: 13px;
+            padding: 7px 10px;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 8px;
+            }
+
+            .page-container {
+                padding: 12px;
+            }
+
+            .page-title {
+                font-size: 20px;
+            }
+
+            #searchBox {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container-fluid">
+    <div class="page-container">
+
+        <div class="page-title">
+            Pending Court Cases
+        </div>
+
+        <div class="toolbar">
+
+            <button class="btn btn-primary" onclick="openAddCase()">
+                <span class="glyphicon glyphicon-plus"></span>
+                Add Case
+            </button>
+
+            <input
+                type="text"
+                id="searchBox"
+                class="form-control"
+                placeholder="Search Case No, LIMBS ID, Court, Petitioner, Respondent, CNR..."
+                oninput="renderTable()"
+            >
+
+            <button class="btn btn-default" onclick="clearSearch()">
+                <span class="glyphicon glyphicon-remove"></span>
+                Clear
+            </button>
+
+            <button class="btn btn-default" onclick="loadCases()">
+                <span class="glyphicon glyphicon-refresh"></span>
+                Refresh
+            </button>
+
+        </div>
+
+        <div class="summary-box">
+            <span class="label label-primary">
+                Total Cases: <span id="totalCases">0</span>
+            </span>
+
+            <span class="label label-danger">
+                Overdue: <span id="overdueCases">0</span>
+            </span>
+
+            <span class="label label-warning">
+                Next 7 Days: <span id="nearCases">0</span>
+            </span>
+        </div>
+
+        <div class="table-container">
+
+            <table id="caseTable" class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>SL</th>
+                        <th>LIMBS ID</th>
+                        <th>Case No</th>
+                        <th>Registration Date</th>
+                        <th>Court</th>
+                        <th>Petitioner</th>
+                        <th>Respondent</th>
+                        <th>Advocate</th>
+                        <th>Amount Involved</th>
+                        <th>Previous Date</th>
+                        
+                        <th>
+                            Next Date
+                            <span class="sort-indicator">▲</span>
+                        </th>
+                        <th>Present Status</th>
+                        <th>Date Hearing</th>
+                        <th>Acts</th>
+                        <th>CNR</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody id="caseTableBody">
+                    <tr>
+                        <td colspan="16" class="loading">
+                            Loading cases...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+</div>
+
+
+<!-- Firebase -->
+<script type="module">
+
+    import { initializeApp }
+        from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+
+    import {
+        getDatabase,
+        ref,
+        onValue,
+        set,
+        update,
+        remove
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+    import{app}from"./firebase-config.js";
+
+
+
+
+    // const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const casesRef = ref(db, "pendingcases");
+
+    let allCases = {};
+
+
+    /* ============================================================
+       DATE FUNCTIONS
+       Firebase date format = DD-MM-YYYY
+       ============================================================ */
+
+    function parseDMY(dateStr) {
+
+        if (!dateStr) return null;
+
+        const parts = String(dateStr).trim().split("-");
+
+        if (parts.length !== 3) return null;
+
+        const day = Number(parts[0]);
+        const month = Number(parts[1]);
+        const year = Number(parts[2]);
+
+        if (!day || !month || !year) return null;
+
+        const date = new Date(year, month - 1, day);
+
+        if (
+            date.getFullYear() !== year ||
+            date.getMonth() !== month - 1 ||
+            date.getDate() !== day
+        ) {
+            return null;
+        }
+
+        return date;
+    }
+
+
+    function formatDate(date) {
+
+        if (!date) return "";
+
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = date.getFullYear();
+
+        return `${day}-${month}-${year}`;
+    }
+
+
+    function isValidDMY(dateStr) {
+
+        return parseDMY(dateStr) !== null;
+    }
+
+
+    function todayWithoutTime() {
+
+        const d = new Date();
+
+        return new Date(
+            d.getFullYear(),
+            d.getMonth(),
+            d.getDate()
+        );
+    }
+
+
+    /* ============================================================
+       LOAD CASES
+       ============================================================ */
+
+    window.loadCases = function () {
+
+        document.getElementById("caseTableBody").innerHTML =
+            `<tr>
+                <td colspan="16" class="loading">
+                    Loading cases...
+                </td>
+            </tr>`;
+
+        onValue(casesRef, (snapshot) => {
+
+            allCases = snapshot.val() || {};
+
+            renderTable();
+
+        }, {
+            onlyOnce: false
+        });
+    };
+
+
+    /* ============================================================
+       SORT CASES BY NEXT DATE
+       ============================================================ */
+
+    function getSortedCases() {
+
+        const cases = Object.entries(allCases).map(([key, data]) => {
+
+            return {
+                key: key,
+                ...data
+            };
+
+        });
+
+        cases.sort((a, b) => {
+
+            const dateA = parseDMY(a.nextDate);
+            const dateB = parseDMY(b.nextDate);
+
+            if (!dateA && !dateB) return 0;
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+
+            return dateA - dateB;
+
+        });
+
+        return cases;
+    }
+
+
+    /* ============================================================
+       SEARCH
+       ============================================================ */
+
+    function matchesSearch(caseData, searchText) {
+
+        if (!searchText) return true;
+
+        const searchableFields = [
+
+            caseData.limbsID,
+            caseData.caseNo,
+            caseData.registrationDate,
+            caseData.court,
+            caseData.petitioner,
+            caseData.respondent,
+            caseData.advocate,
+            caseData.amountInvolved,
+            caseData.previousDate,
+            caseData.nextDate,
+            caseData.presentStatus,
+            caseData.orderPreviousDateHearing,
+            caseData.DateHearing,
+            caseData.acts,
+            caseData.caseDetails,
+            caseData.erpUniqueCaseKey,
+            caseData.cnr,
+            caseData.detailsDeposits
+
+        ];
+
+        return searchableFields.some(value =>
+
+            String(value || "")
+                .toLowerCase()
+                .includes(searchText)
+
+        );
+    }
+
+
+    /* ============================================================
+       RENDER TABLE
+       ============================================================ */
+
+    window.renderTable = function () {
+
+        const tbody = document.getElementById("caseTableBody");
+
+        const searchText =
+            document.getElementById("searchBox")
+                .value
+                .trim()
+                .toLowerCase();
+
+
+        const cases = getSortedCases().filter(c =>
+            matchesSearch(c, searchText)
+        );
+
+
+        updateSummary();
+
+
+        if (cases.length === 0) {
+
+            tbody.innerHTML =
+                `<tr>
+                    <td colspan="16" class="no-data">
+                        No cases found.
+                    </td>
+                </tr>`;
+
+            return;
+        }
+
+
+        let html = "";
+
+        cases.forEach((caseData, index) => {
+
+            const nextDate = parseDMY(caseData.nextDate);
+
+            let dateClass = "";
+
+            if (nextDate) {
+
+                const today = todayWithoutTime();
+
+                const difference =
+                    Math.ceil(
+                        (nextDate - today) /
+                        (1000 * 60 * 60 * 24)
+                    );
+
+                if (difference < 0) {
+                    dateClass = "date-overdue";
+                }
+                else if (difference <= 7) {
+                    dateClass = "date-near";
+                }
+            }
+
+
+            html += `
+                <tr>
+
+                    <td class="text-center">
+                        ${index + 1}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(caseData.limbsID)}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(caseData.caseNo)}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(caseData.registrationDate)}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(caseData.court)}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(caseData.petitioner)}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(caseData.respondent)}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(caseData.advocate)}
+                    </td>
+
+                    <td class="text-right">
+                        ${escapeHTML(caseData.amountInvolved)}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(caseData.previousDate)}
+                    </td>
+
+                    <td class="${dateClass}">
+                        ${escapeHTML(caseData.nextDate)}
+                    </td>
+
+                    <td class="status-cell">
+                        ${escapeHTML(caseData.presentStatus)}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(caseData.DateHearing)}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(caseData.acts)}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(caseData.cnr)}
+                    </td>
+
+                    <td class="text-center">
+
+                        <button
+                            class="btn btn-info btn-xs btn-action"
+                            onclick="viewCase('${encodeURIComponent(caseData.key)}')">
+                            <span class="glyphicon glyphicon-eye-open"></span>
+                            VIEW
+                        </button>
+
+                        <button
+                            class="btn btn-warning btn-xs btn-action"
+                            onclick="editCase('${encodeURIComponent(caseData.key)}')">
+                            <span class="glyphicon glyphicon-edit"></span>
+                            Edit
+                        </button>
+
+                        <button
+                            class="btn btn-danger btn-xs btn-action"
+                            onclick="deleteCase('${encodeURIComponent(caseData.key)}')">
+                            <span class="glyphicon glyphicon-trash"></span>
+                            Delete
+                        </button>
+
+                    </td>
+
+                </tr>
+            `;
+        });
+
+
+        tbody.innerHTML = html;
+    };
+
+
+    /* ============================================================
+       SUMMARY
+       ============================================================ */
+
+    function updateSummary() {
+
+        const cases = Object.values(allCases);
+
+        let overdue = 0;
+        let near = 0;
+
+        const today = todayWithoutTime();
+
+        cases.forEach(caseData => {
+
+            const nextDate = parseDMY(caseData.nextDate);
+
+            if (!nextDate) return;
+
+            const difference =
+                Math.ceil(
+                    (nextDate - today) /
+                    (1000 * 60 * 60 * 24)
+                );
+
+            if (difference < 0) {
+                overdue++;
+            }
+            else if (difference <= 7) {
+                near++;
+            }
+
+        });
+
+
+        document.getElementById("totalCases").textContent =
+            cases.length;
+
+        document.getElementById("overdueCases").textContent =
+            overdue;
+
+        document.getElementById("nearCases").textContent =
+            near;
+    }
+
+
+    /* ============================================================
+       CLEAR SEARCH
+       ============================================================ */
+
+    window.clearSearch = function () {
+
+        document.getElementById("searchBox").value = "";
+
+        renderTable();
+    };
+
+
+    /* ============================================================
+       ADD CASE
+       ============================================================ */
+
+    window.openAddCase = async function () {
+
+        const { value: formValues } = await Swal.fire({
+
+            title: "Add Pending Court Case",
+
+            width: "900px",
+
+            html: getCaseFormHTML({}),
+
+            focusConfirm: false,
+
+            showCancelButton: true,
+
+            confirmButtonText: "Save Case",
+
+            cancelButtonText: "Cancel",
+
+            didOpen: () => {
+
+                addDateInputValidation();
+
+            },
+
+            preConfirm: () => {
+
+                return getFormData();
+
+            }
+
+        });
+
+
+        if (!formValues) return;
+
+
+        if (!formValues.limbsID) {
+
+            Swal.fire(
+                "Required",
+                "LIMBS ID is required.",
+                "warning"
+            );
+
+            return;
+        }
+
+
+        if (!isValidDMY(formValues.limbsIDDateCheck) &&
+            formValues.limbsIDDateCheck) {
+
+            Swal.fire(
+                "Invalid Date",
+                "Please enter dates in DD-MM-YYYY format.",
+                "warning"
+            );
+
+            return;
+        }
+
+
+        if (!validateDates(formValues)) return;
+
+
+        const limbsID = formValues.limbsID.trim();
+
+
+        if (allCases[limbsID]) {
+
+            Swal.fire(
+                "Duplicate LIMBS ID",
+                `A case with LIMBS ID "${limbsID}" already exists.`,
+                "error"
+            );
+
+            return;
+        }
+
+
+        try {
+
+            await set(
+                ref(db, "pendingcases/" + limbsID),
+                formValues
+            );
+
+
+            Swal.fire(
+                "Saved",
+                "Court case has been added successfully.",
+                "success"
+            );
+
+        }
+        catch (error) {
+
+            console.error(error);
+
+            Swal.fire(
+                "Error",
+                error.message,
+                "error"
+            );
+        }
+    };
+
+
+    /* ============================================================
+       EDIT CASE
+       ============================================================ */
+
+    window.editCase = async function (encodedKey) {
+
+        const key = decodeURIComponent(encodedKey);
+
+        const caseData = allCases[key];
+
+        if (!caseData) {
+
+            Swal.fire(
+                "Error",
+                "Case data not found.",
+                "error"
+            );
+
+            return;
+        }
+
+
+        const { value: formValues } = await Swal.fire({
+
+            title: "Edit Court Case",
+
+            width: "900px",
+
+            html: getCaseFormHTML(caseData, true),
+
+            focusConfirm: false,
+
+            showCancelButton: true,
+
+            confirmButtonText: "Update Case",
+
+            cancelButtonText: "Cancel",
+
+            didOpen: () => {
+
+                addDateInputValidation();
+
+            },
+
+            preConfirm: () => {
+
+                return getFormData();
+
+            }
+
+        });
+
+
+        if (!formValues) return;
+
+
+        if (!formValues.limbsID) {
+
+            Swal.fire(
+                "Required",
+                "LIMBS ID is required.",
+                "warning"
+            );
+
+            return;
+        }
+
+
+        if (!validateDates(formValues)) return;
+
+
+        const newKey = formValues.limbsID.trim();
+
+
+        if (newKey !== key && allCases[newKey]) {
+
+            Swal.fire(
+                "Duplicate LIMBS ID",
+                `A case with LIMBS ID "${newKey}" already exists.`,
+                "error"
+            );
+
+            return;
+        }
+
+
+        try {
+
+            /*
+             * If LIMBS ID has been changed,
+             * delete the old Firebase key and
+             * create the new one.
+             */
+
+            if (newKey !== key) {
+
+                await remove(
+                    ref(db, "pendingcases/" + key)
+                );
+
+                await set(
+                    ref(db, "pendingcases/" + newKey),
+                    formValues
+                );
+
+            }
+            else {
+
+                await update(
+                    ref(db, "pendingcases/" + key),
+                    formValues
+                );
+
+            }
+
+
+            Swal.fire(
+                "Updated",
+                "Court case has been updated successfully.",
+                "success"
+            );
+
+        }
+        catch (error) {
+
+            console.error(error);
+
+            Swal.fire(
+                "Error",
+                error.message,
+                "error"
+            );
+        }
+    };
+
+
+    /* ============================================================
+       DELETE CASE
+       ============================================================ */
+
+    window.deleteCase = async function (encodedKey) {
+
+        const key = decodeURIComponent(encodedKey);
+
+        const caseData = allCases[key];
+
+        if (!caseData) {
+
+            Swal.fire(
+                "Error",
+                "Case data not found.",
+                "error"
+            );
+
+            return;
+        }
+
+
+        const result = await Swal.fire({
+
+            title: "Delete Case?",
+
+            html: `
+                <div style="text-align:left">
+                    <b>LIMBS ID:</b>
+                    ${escapeHTML(caseData.limbsID)}
+                    <br>
+                    <b>Case No:</b>
+                    ${escapeHTML(caseData.caseNo)}
+                    <br>
+                    <b>Petitioner:</b>
+                    ${escapeHTML(caseData.petitioner)}
+                </div>
+            `,
+
+            icon: "warning",
+
+            showCancelButton: true,
+
+            confirmButtonColor: "#d33",
+
+            confirmButtonText: "Yes, Delete",
+
+            cancelButtonText: "Cancel"
+
+        });
+
+
+        if (!result.isConfirmed) return;
+
+
+        try {
+
+            await remove(
+                ref(db, "pendingcases/" + key)
+            );
+
+
+            Swal.fire(
+                "Deleted",
+                "Court case has been deleted.",
+                "success"
+            );
+
+        }
+        catch (error) {
+
+            console.error(error);
+
+            Swal.fire(
+                "Error",
+                error.message,
+                "error"
+            );
+        }
+    };
+
+
+    /* ============================================================
+       VIEW CASE DETAILS
+       ============================================================ */
+
+    window.viewCase = function (encodedKey) {
+
+        const key = decodeURIComponent(encodedKey);
+
+        const caseData = allCases[key];
+
+        if (!caseData) {
+
+            Swal.fire(
+                "Error",
+                "Case data not found.",
+                "error"
+            );
+
+            return;
+        }
+
+
+        Swal.fire({
+
+            title: "Case Details",
+
+            width: "900px",
+
+            html: `
+
+                <div class="case-details-popup">
+
+                    <table class="case-info-table">
+
+                        <tr>
+                            <td>LIMBS ID</td>
+                            <td>${escapeHTML(caseData.limbsID)}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Case No</td>
+                            <td>${escapeHTML(caseData.caseNo)}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Registration Date</td>
+                            <td>${escapeHTML(caseData.registrationDate)}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Court</td>
+                            <td>${escapeHTML(caseData.court)}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Petitioner</td>
+                            <td>${escapeHTML(caseData.petitioner)}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Respondent</td>
+                            <td>${escapeHTML(caseData.respondent)}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Advocate</td>
+                            <td>${escapeHTML(caseData.advocate)}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Amount Involved</td>
+                            <td>${escapeHTML(caseData.amountInvolved)}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Previous Date</td>
+                            <td>${escapeHTML(caseData.previousDate)}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Next Date</td>
+                            <td><b>${escapeHTML(caseData.nextDate)}</b></td>
+                        </tr>
+
+                        <tr>
+                            <td>Present Status</td>
+                            <td>${escapeHTML(caseData.presentStatus)}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Date Hearing</td>
+                            <td>${escapeHTML(caseData.DateHearing)}</td>
+                        </tr>
+
+                        <tr>
+                            <td>Acts</td>
+                            <td>${escapeHTML(caseData.acts)}</td>
+                        </tr>
+
+                        <tr>
+                            <td>ERP Unique Case Key</td>
+                            <td>${escapeHTML(caseData.erpUniqueCaseKey)}</td>
+                        </tr>
+
+                        <tr>
+                            <td>CNR</td>
+                            <td>${escapeHTML(caseData.cnr)}</td>
+                        </tr>
+
+                    </table>
+
+
+                    <h4 style="text-align:left; margin-top:15px;">
+                        Case Details
+                    </h4>
+
+                    <div class="details-box">
+                        ${escapeHTML(caseData.caseDetails)}
+                    </div>
+
+
+                    <h4 style="text-align:left; margin-top:15px;">
+                        Previous Order
+                    </h4>
+
+                    <div class="details-box">
+                        ${escapeHTML(caseData.orderPreviousDateHearing)}
+                    </div>
+
+
+                    <h4 style="text-align:left; margin-top:15px;">
+                        Details of Deposits
+                    </h4>
+
+                    <div class="details-box">
+                        ${escapeHTML(caseData.detailsDeposits)}
+                    </div>
+
+                </div>
+            `,
+
+            confirmButtonText: "Close"
+
+        });
+    };
+
+
+    /* ============================================================
+       CASE FORM
+       ============================================================ */
+
+    function getCaseFormHTML(data, isEdit = false) {
+
+        return `
+
+            <div style="text-align:left;">
+
+                <div class="row">
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>
+                                LIMBS ID <span class="required">*</span>
+                            </label>
+
+                            <input
+                                id="swal_limbsID"
+                                class="form-control"
+                                value="${escapeAttribute(data.limbsID)}"
+                                ${isEdit ? "" : ""}
+                                placeholder="Firebase Key / LIMBS ID">
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Case No</label>
+
+                            <input
+                                id="swal_caseNo"
+                                class="form-control"
+                                value="${escapeAttribute(data.caseNo)}"
+                                placeholder="Case Number">
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Registration Date</label>
+
+                            <input
+                                id="swal_registrationDate"
+                                class="form-control date-field"
+                                value="${escapeAttribute(data.registrationDate)}"
+                                placeholder="DD-MM-YYYY"
+                                maxlength="10">
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Court</label>
+
+                            <input
+                                id="swal_court"
+                                class="form-control"
+                                value="${escapeAttribute(data.court)}"
+                                placeholder="Court">
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Petitioner</label>
+
+                            <input
+                                id="swal_petitioner"
+                                class="form-control"
+                                value="${escapeAttribute(data.petitioner)}"
+                                placeholder="Petitioner">
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Respondent</label>
+
+                            <input
+                                id="swal_respondent"
+                                class="form-control"
+                                value="${escapeAttribute(data.respondent)}"
+                                placeholder="Respondent">
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Advocate</label>
+
+                            <input
+                                id="swal_advocate"
+                                class="form-control"
+                                value="${escapeAttribute(data.advocate)}"
+                                placeholder="Advocate">
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Amount Involved</label>
+
+                            <input
+                                id="swal_amountInvolved"
+                                class="form-control"
+                                value="${escapeAttribute(data.amountInvolved)}"
+                                placeholder="Amount Involved">
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Previous Date</label>
+
+                            <input
+                                id="swal_previousDate"
+                                class="form-control date-field"
+                                value="${escapeAttribute(data.previousDate)}"
+                                placeholder="DD-MM-YYYY"
+                                maxlength="10">
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Next Date</label>
+
+                            <input
+                                id="swal_nextDate"
+                                class="form-control date-field"
+                                value="${escapeAttribute(data.nextDate)}"
+                                placeholder="DD-MM-YYYY"
+                                maxlength="10">
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Present Status</label>
+
+                            <input
+                                id="swal_presentStatus"
+                                class="form-control"
+                                value="${escapeAttribute(data.presentStatus)}"
+                                placeholder="Present Status">
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Date Hearing</label>
+
+                            <input
+                                id="swal_DateHearing"
+                                class="form-control date-field"
+                                value="${escapeAttribute(data.DateHearing)}"
+                                placeholder="DD-MM-YYYY"
+                                maxlength="10">
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Acts</label>
+
+                            <input
+                                id="swal_acts"
+                                class="form-control"
+                                value="${escapeAttribute(data.acts)}"
+                                placeholder="Acts">
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>ERP Unique Case Key</label>
+
+                            <input
+                                id="swal_erpUniqueCaseKey"
+                                class="form-control"
+                                value="${escapeAttribute(data.erpUniqueCaseKey)}"
+                                placeholder="ERP Unique Case Key">
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>CNR</label>
+
+                            <input
+                                id="swal_cnr"
+                                class="form-control"
+                                value="${escapeAttribute(data.cnr)}"
+                                placeholder="CNR">
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <div class="form-group">
+                    <label>Previous Order</label>
+
+                    <textarea
+                        id="swal_orderPreviousDateHearing"
+                        class="form-control"
+                        rows="4"
+                        placeholder="Previous Order">${escapeHTML(data.orderPreviousDateHearing || "")}</textarea>
+                </div>
+
+
+                <div class="form-group">
+                    <label>Case Details</label>
+
+                    <textarea
+                        id="swal_caseDetails"
+                        class="form-control"
+                        rows="6"
+                        placeholder="Detailed case information">${escapeHTML(data.caseDetails || "")}</textarea>
+                </div>
+
+
+                <div class="form-group">
+                    <label>Details of Deposits</label>
+
+                    <textarea
+                        id="swal_detailsDeposits"
+                        class="form-control"
+                        rows="4"
+                        placeholder="Details of deposits">${escapeHTML(data.detailsDeposits || "")}</textarea>
+                </div>
+
+            </div>
+        `;
+    }
+
+
+    /* ============================================================
+       GET FORM DATA
+       ============================================================ */
+
+    function getFormData() {
+
+        return {
+
+            limbsID:
+                document.getElementById("swal_limbsID").value.trim(),
+
+            caseNo:
+                document.getElementById("swal_caseNo").value.trim(),
+
+            registrationDate:
+                document.getElementById("swal_registrationDate").value.trim(),
+
+            court:
+                document.getElementById("swal_court").value.trim(),
+
+            petitioner:
+                document.getElementById("swal_petitioner").value.trim(),
+
+            respondent:
+                document.getElementById("swal_respondent").value.trim(),
+
+            advocate:
+                document.getElementById("swal_advocate").value.trim(),
+
+            amountInvolved:
+                document.getElementById("swal_amountInvolved").value.trim(),
+
+            previousDate:
+                document.getElementById("swal_previousDate").value.trim(),
+
+            nextDate:
+                document.getElementById("swal_nextDate").value.trim(),
+
+            presentStatus:
+                document.getElementById("swal_presentStatus").value.trim(),
+
+            orderPreviousDateHearing:
+                document.getElementById("swal_orderPreviousDateHearing").value.trim(),
+
+            DateHearing:
+                document.getElementById("swal_DateHearing").value.trim(),
+
+            acts:
+                document.getElementById("swal_acts").value.trim(),
+
+            caseDetails:
+                document.getElementById("swal_caseDetails").value.trim(),
+
+            erpUniqueCaseKey:
+                document.getElementById("swal_erpUniqueCaseKey").value.trim(),
+
+            cnr:
+                document.getElementById("swal_cnr").value.trim(),
+
+            detailsDeposits:
+                document.getElementById("swal_detailsDeposits").value.trim()
+
+        };
+    }
+
+
+    /* ============================================================
+       VALIDATE DATES
+       ============================================================ */
+
+    function validateDates(data) {
+
+        const dateFields = [
+            {
+                name: "Registration Date",
+                value: data.registrationDate
+            },
+            {
+                name: "Previous Date",
+                value: data.previousDate
+            },
+            {
+                name: "Next Date",
+                value: data.nextDate
+            },
+            {
+                name: "Date Hearing",
+                value: data.DateHearing
+            }
+        ];
+
+
+        for (const field of dateFields) {
+
+            if (
+                field.value &&
+                !isValidDMY(field.value)
+            ) {
+
+                Swal.fire(
+                    "Invalid Date",
+                    `${field.name} must be in DD-MM-YYYY format.`,
+                    "warning"
+                );
+
+                return false;
+            }
+        }
+
+
+        return true;
+    }
+
+
+    /* ============================================================
+       DATE INPUT VALIDATION
+       ============================================================ */
+
+    function addDateInputValidation() {
+
+        document
+            .querySelectorAll(".date-field")
+            .forEach(input => {
+
+                input.addEventListener("input", function () {
+
+                    let value =
+                        this.value.replace(/\D/g, "");
+
+                    if (value.length > 8) {
+                        value = value.substring(0, 8);
+                    }
+
+                    if (value.length > 4) {
+
+                        value =
+                            value.substring(0, 2) +
+                            "-" +
+                            value.substring(2, 4) +
+                            "-" +
+                            value.substring(4);
+
+                    }
+                    else if (value.length > 2) {
+
+                        value =
+                            value.substring(0, 2) +
+                            "-" +
+                            value.substring(2);
+
+                    }
+
+                    this.value = value;
+
+                });
+
+            });
+    }
+
+
+    /* ============================================================
+       HTML ESCAPE
+       ============================================================ */
+
+    function escapeHTML(value) {
+
+        if (value === null || value === undefined) {
+            return "";
+        }
+
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+
+    function escapeAttribute(value) {
+
+        return escapeHTML(value || "");
+    }
+
+
+    /* ============================================================
+       INITIAL LOAD
+       ============================================================ */
+
+    loadCases();
+
+</script>
+
+
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- Bootstrap -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+
+</body>
+</html>
+

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HQ Homepage</title>
+
+<style>
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background: #f4f6f9;
+}
+
+/* HEADER */
+header {
+    background: #1f2937;
+    padding: 0 40px;
+    position: relative;
+}
+
+.logo {
+    color: #fff;
+    font-size: 22px;
+    font-weight: 600;
+    padding: 18px 0;
+    display: inline-block;
+}
+
+/* NAVIGATION */
+nav {
+    float: left;
+    width: auto;
+}
+
+nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+nav ul li {
+    position: relative;
+    display: inline-block;
+}
+
+nav ul li a {
+    display: block;
+    padding: 20px 18px;
+    color: #fff;
+    text-decoration: none;
+    font-size: 15px;
+    transition: 0.3s;
+}
+
+nav ul li:hover {
+    background: #374151;
+}
+
+nav ul li a:hover {
+    color: #38bdf8;
+}
+
+/* FIRST DROPDOWN */
+nav ul ul {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #ffffff;
+    min-width: 240px;
+    display: none;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+    border-radius: 5px;
+    z-index: 1000;
+    padding: 5px 0;
+}
+
+nav ul ul li {
+    display: block;
+    width: 100%;
+}
+
+nav ul ul li a {
+    padding: 10px 18px;
+    color: #333;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+nav ul ul li:hover {
+    background: #f1f5f9;
+}
+
+nav ul ul li a:hover {
+    color: #1f2937;
+}
+
+/* SECOND LEVEL DROPDOWN (Right Side) */
+nav ul ul ul {
+    top: -5px;
+    left: 100%;
+    margin-left: 2px;
+    min-width: 220px;
+}
+
+/* THIRD LEVEL DROPDOWN */
+nav ul ul ul ul {
+    top: -5px;
+    left: 100%;
+    margin-left: 2px;
+    min-width: 220px;
+}
+
+/* SHOW DROPDOWN */
+nav ul li:hover > ul {
+    display: block;
+}
+
+/* HERO SECTION */
+.hero {
+    text-align: center;
+    padding: 100px 20px;
+    background: linear-gradient(to right, #f47139, #f47139);
+    color: white;
+}
+
+.hero h1 {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+.hero h2 {
+    font-size: 28px;
+    margin-bottom: 20px;
+    font-weight: 400;
+}
+
+.hero button {
+    padding: 12px 25px;
+    font-size: 16px;
+    border: none;
+    background: white;
+    color: #1e3a8a;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: 0.3s;
+}
+
+.hero button:hover {
+    background: #e0e7ff;
+}
+
+/* CLEAR FLOAT */
+header::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+/* RESPONSIVE */
+@media(max-width: 900px){
+    nav {
+        float: none;
+        width: 100%;
+    }
+
+    nav ul li {
+        display: block;
+        position: relative;
+    }
+
+    nav ul ul {
+        position: static;
+        box-shadow: none;
+        background: #2d3748;
+        min-width: auto;
+    }
+
+    nav ul ul li a {
+        color: #fff;
+        padding-left: 30px;
+    }
+
+    nav ul ul li:hover {
+        background: #374151;
+    }
+
+    nav ul ul ul {
+        left: 0;
+        position: static;
+    }
+
+    nav ul ul ul li a {
+        padding-left: 50px;
+    }
+
+    nav ul ul ul ul li a {
+        padding-left: 70px;
+    }
+}
+</style>
+
+</head>
+<body>
+
+<header>
+    <div class="logo">BSNL HQ</div>
+    <nav>
+        <ul>
+            <li><a href="#">Home</a></li>
+
+            <li>
+                <a href="#">Services ▾</a>
+                <ul>
+                    <li><a href="#">Menu1</a></li>
+                    <li><a href="#">Menu2</a></li>
+                    <li>
+                        <a href="#">Activity ▸</a>
+                        <ul>
+                            <li><a href="#">Menu-1</a></li>
+                            <li><a href="#">Menu-2</a></li>
+                            <li><a href="#">Menu-3</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </li>
+
+            <li>
+                <a href="#">Sections ▾</a>
+                <ul>
+                    <!-- Admin Section -->
+                    <li>
+                        <a href="#">Admin ▸</a>
+                        <ul>
+                            <!-- Employees -->
+                            <li>
+                                <a href="#">Employees ▸</a>
+                                <ul>
+                                    <li>
+                                        <a href="#">Transfer & Posting ▸</a>
+                                        <ul>
+                                            <li><a href="ssexe.html">Station Seniority Executive</a></li>
+                                            <li><a href="#">Station Seniority Non-Executive</a></li>
+                                        </ul>
+                                    </li>
+                                    <li><a href="#">Other Menu 1</a></li>
+                                    <li><a href="#">Other Menu 2</a></li>
+                                </ul>
+                            </li>
+                            <!-- Tenders -->
+                            <li>
+                                <a href="#">Tenders ▸</a>
+                                <ul>
+                                    <li><a href="tender.html">Existing Tenders</a></li>
+                                    <li><a href="#">Other Menu 1</a></li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- Other Sections -->
+                    
+                    <li><a href="#">Land Mutation</a></li>
+                    <li><a href="#">Planning & IT ▸</a>
+                    <ul>
+                            <li><a href="#"> Rent-In cases ▸</a>
+                                <ul>
+                                    <li><a href="nbsnlbts.html">NBSNL Sites</a></li>
+                                    <li><a href="#">USO Sites</a></li>
+                                    <li><a href="#">Exchanges</a></li>
+                                </ul>
+                            </li>
+                            <li><a href="#">Quarter</a></li>
+                        </ul>
+                    </li>
+                    
+                    <li>
+                        <a href="#">Legal ▸</a>
+                        <ul>
+                            <li><a href="pendingCourtCases.html">Pending Court cases</a></li>
+                            <li><a href="#">Other Menu 1</a></li>
+                        </ul>
+                    </li>
+                    
+                    <li><a href="#">CM-Project</a></li>
+                    <li><a href="#">OSM</a></li>
+                    <li><a href="#">Store</a></li>
+                </ul>
+            </li>
+
+            <li>
+                <a href="#">Report ▾</a>
+                <ul>
+                    <li><a href="#">Menu-1</a></li>
+                    <li><a href="#">Menu-2</a></li>
+                </ul>
+            </li>
+
+            <li>
+                <a href="#" id="username">Username ▾</a>
+                <ul>
+                    <li id="logout"><a href="#">Logout</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+</header>
+
+<section class="hero">
+    <h1>Bharat Sanchar Nigam Limited</h1>
+    <h2>AGM(HQ & CM-Projects)</h2>
+</section>
+
+<script type="module">
+    import { app } from "./firebase-config.js";  
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+    
+    const auth = getAuth();
+    let username = sessionStorage.getItem("username");
+    
+    if (username) {
+        document.getElementById('username').innerHTML = "👤 " + username + " ▾";
+        document.getElementById('username').style.color = "red";
+    }
+    
+    document.getElementById('logout').onclick = function(e) {
+        e.preventDefault();
+        signOut(auth).then(() => {
+            window.location.href = "index.html";
+        }).catch((error) => {
+            console.error("Logout error:", error);
+        });
+    }
+</script>
+
+</body>
+</html>

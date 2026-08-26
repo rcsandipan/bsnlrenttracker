@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tender · Management</title>
+    <!-- Bootstrap 3 + Fonts -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <!-- Excel / XLSX -->
+    <script src="https://cdn.rawgit.com/rainabba/jquery-table2excel/1.1.0/dist/jquery.table2excel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Firebase (modular) -->
+    <script type="importmap">
+        {
+            "imports": {
+                "firebase/app": "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js",
+                "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js",
+                "firebase/database": "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js"
+            }
+        }
+    </script>
+    <style>
+        /* ---- layout & table ---- */
+        body { background: #f8fafc; font-family: 'Segoe UI', Roboto, sans-serif; padding: 10px 20px; }
+        .main-content { position: relative; top: 10px; }
+        #tenderTable { width: max-content; min-width: 100%; table-layout: auto; }
+        #tenderTable th, #tenderTable td { white-space: nowrap; vertical-align: middle; padding: 8px 10px; }
+        #tenderTable th { text-align: center; background: #e9edf2; }
+        .date-column { white-space: nowrap !important; min-width: 95px; }
+        .days-column { white-space: nowrap !important; min-width: 110px; }
+        .action-column { white-space: nowrap !important; min-width: 120px; }
+        .table-responsive { overflow-x: auto; }
+        a { text-decoration: none; color: white; cursor: pointer; }
+        .bulb { width: 20px; height: 20px; border-radius: 50%; display: inline-block; margin: 10px; box-shadow: 0 0 10px currentColor; }
+        .bulb.year { background-color: #e5ff00; box-shadow: 0 0 15px #e5ff00, 0 0 30px #e5ff00; }
+        .bulb.halfyear { background-color: #ff0000; box-shadow: 0 0 15px #ff0000, 0 0 30px #ff0000; }
+        .btn-sm { margin: 2px 0; }
+        .swal2-input { margin: 4px 0 !important; }
+        .filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin-bottom: 10px; }
+        .filter-bar .form-control { width: 280px; }
+        .badge-count { font-weight: 600; margin-left: 6px; }
+        h1 { font-weight: 500; letter-spacing: 0.5px; }
+        #home-btn { margin-right: 12px; }
+        .alert-badge {
+            display: inline-block;
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 8px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-content container-fluid">
+    <!-- top bar -->
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+        <div>
+            <button class="btn btn-success" id="home-btn">🏠 HOME</button>
+            <h1 style="display:inline-block; margin-left: 20px;">
+                TENDER LIST
+                <span id="alertBadge" class="alert-badge" style="display:none;">0</span>
+            </h1>
+        </div>
+        <div>
+            <span style="font-weight: 500;">Total: <b id="searchcount">0</b></span>
+        </div>
+    </div>
+
+    <!-- filter + actions -->
+    <div class="filter-bar">
+        <input type="text" id="searchInput" class="form-control" placeholder="🔍 Search keywords (Tender, Vendor, Code...)">
+        <div style="display: flex; gap: 12px;">
+            <button class="btn btn-primary" id="exportBtn">📊 Export Excel</button>
+            <button class="btn btn-success" id="addBtn">➕ Add New Entry</button>
+        </div>
+    </div>
+
+    <!-- table wrapper -->
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped" id="tender-table" style="margin-top: 10px;">
+            <thead>
+                <tr>
+                    <th style="text-align:center;">SL</th>
+                    <th style="text-align:center;">Tender ID</th>
+                    <th style="text-align:center;">Tender Name</th>
+                    <th style="text-align:center;">Work Type</th>
+                    <th style="text-align:center;">Tender Doc</th>
+                    <th style="text-align:center;">Contractor</th>
+                    <th style="text-align:center;">Vendor Code</th>
+                    <th style="text-align:center;">Agreement</th>
+                    <th style="text-align:center;">Work Desc</th>
+                    <th style="text-align:center;">Agreement Valid</th>
+                    <th style="text-align:center;">Remaining (Days)</th>
+                    <th style="text-align:center;">APO</th>
+                    <th style="text-align:center;">APO Valid</th>
+                    <th style="text-align:center;">Remaining APO</th>
+                    <th style="text-align:center;">PBG</th>
+                    <th style="text-align:center;">PBG Valid</th>
+                    <th style="text-align:center;">Remaining PBG</th>
+                    <th style="text-align:center;">PO</th>
+                    <th style="text-align:center;">Action<br>(Contractor)</th>
+                    <th style="text-align:center;">Action<br>(Tender)</th>
+                </tr>
+            </thead>
+            <tbody id="tender-body">
+                <!-- dynamic rows -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ============ FIREBASE CONFIG & MODULE SCRIPT ============ -->
+<script type="module">
+    // ---- Firebase imports ----
+    // import { initializeApp } from "firebase/app";
+    // import { getDatabase, ref, onValue, get, set, update, remove, push } from "firebase/database";
+
+    // // Your Firebase config (replace with your own)
+    // const firebaseConfig = {
+    //     apiKey: "AIzaSyDummyKeyDoNotUse",
+    //     authDomain: "your-app.firebaseapp.com",
+    //     databaseURL: "https://your-app-default-rtdb.firebaseio.com",
+    //     projectId: "your-app",
+    //     storageBucket: "your-app.appspot.com",
+    //     messagingSenderId: "123456789",
+    //     appId: "1:123456789:web:abcdef"
+    // };
+
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+    import { getDatabase, ref, child, onValue, get, set, update,remove, push } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+    import {app} from "./firebase-config.js";  
+
+    //const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // Google Apps Script upload endpoint
+    const appsScriptUrl = "https://script.google.com/macros/s/AKfycby3V4jAoYjAKglqj8x2SSpIbmaCcbuEajZw9LC2ClyD8UNxwaM6yH9HM5uwWEZK8bTZTg/exec";
+
+    // ----- helpers -----
+    function escapeHtml(value) {
+        return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    function getRemainingDays(dateString) {
+        if (!dateString) return "";
+        const parts = dateString.split("-");
+        if (parts.length !== 3) return "";
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const year = parseInt(parts[2], 10);
+        const expiry = new Date(year, month, day);
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        expiry.setHours(0,0,0,0);
+        const diff = expiry.getTime() - today.getTime();
+        return Math.ceil(diff / (1000*60*60*24));
+    }
+
+    function formatDateForInput(ddmmYYYY) {
+        if (!ddmmYYYY) return "";
+        const parts = ddmmYYYY.split("-");
+        if (parts.length !== 3) return "";
+        return `${parts[2]}-${parts[1].padStart(2,"0")}-${parts[0].padStart(2,"0")}`;
+    }
+
+    function formatDateDDMMYYYY(iso) {
+        if (!iso) return "";
+        const parts = iso.split("-");
+        if (parts.length !== 3) return "";
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+
+    function parseDMY(dateStr) {
+        if (!dateStr) return null;
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return null;
+        const [day, month, year] = parts.map(Number);
+        return new Date(year, month - 1, day);
+    }
+
+    // ----- Global alert list -----
+    let globalAlertList = [];
+
+    // ----- render table with search and alert collection -----
+    function renderTable() {
+        const searchText = document.getElementById("searchInput").value.toLowerCase().trim();
+        const tbody = document.getElementById("tender-body");
+        const countSpan = document.getElementById("searchcount");
+        const alertBadge = document.getElementById("alertBadge");
+
+        const tendersRef = ref(db, "tenders");
+        onValue(tendersRef, (snapshot) => {
+            const tenders = snapshot.val() || {};
+            tbody.innerHTML = "";
+            let visibleCount = 0;
+            let sl = 1;
+            const alertList = [];
+
+            // Get current date for comparison
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            for (const tenderKey in tenders) {
+                const tender = tenders[tenderKey];
+                const contractors = tender.contractors || {};
+                const contractorKeys = Object.keys(contractors);
+                const rowCount = Math.max(contractorKeys.length, 1);
+
+                // filter check
+                let tenderMatches = false;
+                const tenderStr = (tender.tenderid || "") + " " + (tender.tendername || "") + " " + (tender.worktype || "");
+                if (tenderStr.toLowerCase().includes(searchText)) tenderMatches = true;
+
+                // Process contractors for alerts
+                for (const contractorKey in contractors) {
+                    const contractor = contractors[contractorKey];
+                    
+                    // Check Agreement
+                    const agreementDays = getRemainingDays(contractor.agreementvalidupto);
+                    const apoDays = getRemainingDays(contractor.apovalidupto);
+                    const pbgDays = getRemainingDays(contractor.pbgvalidupto);
+
+                    // Collect alerts if any date is within 365 days
+                    if (agreementDays !== "" && agreementDays <= 365) {
+                        alertList.push({
+                            vendorcode: contractor.vendorcode || "",
+                            contractor: contractor.contractor || "",
+                            tenderid: tender.tenderid || "",
+                            tendername: tender.tendername || "",
+                            type: "Agreement",
+                            date: contractor.agreementvalidupto || "",
+                            days: agreementDays
+                        });
+                    }
+
+                    if (apoDays !== "" && apoDays <= 365) {
+                        alertList.push({
+                            vendorcode: contractor.vendorcode || "",
+                            contractor: contractor.contractor || "",
+                            tenderid: tender.tenderid || "",
+                            tendername: tender.tendername || "",
+                            type: "APO",
+                            date: contractor.apovalidupto || "",
+                            days: apoDays
+                        });
+                    }
+
+                    if (pbgDays !== "" && pbgDays <= 365) {
+                        alertList.push({
+                            vendorcode: contractor.vendorcode || "",
+                            contractor: contractor.contractor || "",
+                            tenderid: tender.tenderid || "",
+                            tendername: tender.tendername || "",
+                            type: "PBG",
+                            date: contractor.pbgvalidupto || "",
+                            days: pbgDays
+                        });
+                    }
+                }
+
+                // if no contractor
+                if (contractorKeys.length === 0) {
+                    if (!tenderMatches && searchText !== "") {
+                        // skip
+                    } else {
+                        visibleCount++;
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `
+                            <td style="text-align:center;">${sl}</td>
+                            <td style="text-align:center;">${tender.tenderid || ""}</td>
+                            <td>${tender.tendername || ""}</td>
+                            <td>${tender.worktype || ""}</td>
+                            <td style="text-align:center;">${tender.tenderdocument ? `<a href="${tender.tenderdocument}" target="_blank" class="btn btn-info btn-xs">View</a>` : ""}</td>
+                            <td colspan="10" style="text-align:center; color:#888;">No contractor</td>
+                        `;
+                        tbody.appendChild(tr);
+                        sl++;
+                    }
+                    continue;
+                }
+
+                // with contractors
+                let firstRow = true;
+                let tenderAdded = false;
+                for (let idx = 0; idx < contractorKeys.length; idx++) {
+                    const contractorKey = contractorKeys[idx];
+                    const contractor = contractors[contractorKey];
+                    const contractorStr = (contractor.contractor || "") + " " + (contractor.vendorcode || "") + " " + (contractor.workdesc || "");
+                    const matches = tenderMatches || contractorStr.toLowerCase().includes(searchText);
+                    if (!matches && searchText !== "") continue;
+
+                    if (!tenderAdded) { tenderAdded = true; visibleCount++; }
+
+                    const tr = document.createElement("tr");
+                    const rowspanAttr = (idx === 0) ? `rowspan="${rowCount}"` : "";
+                    const styleCenter = "text-align:center; vertical-align:middle;";
+
+                    // Get days for display
+                    const agreementDays = getRemainingDays(contractor.agreementvalidupto);
+                    const apoDays = getRemainingDays(contractor.apovalidupto);
+                    const pbgDays = getRemainingDays(contractor.pbgvalidupto);
+
+                    // Check if any date is expiring soon (<= 180 days) for red highlighting
+                    const isAgreementExpiring = (agreementDays !== "" && agreementDays <= 180);
+                    const isAPOExpiring = (apoDays !== "" && apoDays <= 180);
+                    const isPBGExpiring = (pbgDays !== "" && pbgDays <= 180);
+                    const hasExpiring = isAgreementExpiring || isAPOExpiring || isPBGExpiring;
+                    const rowBg = hasExpiring ? "#fff0f0" : "";
+
+                    if (idx === 0) {
+                        tr.innerHTML = `
+                            <td ${rowspanAttr} style="${styleCenter}">${sl}</td>
+                            <td ${rowspanAttr} style="${styleCenter}">${tender.tenderid || ""}</td>
+                            <td ${rowspanAttr} style="vertical-align:middle;">${tender.tendername || ""}</td>
+                            <td ${rowspanAttr} style="${styleCenter}">${tender.worktype || ""}</td>
+                            <td ${rowspanAttr} style="${styleCenter}">${tender.tenderdocument ? `<a href="${tender.tenderdocument}" target="_blank" class="btn btn-info btn-xs">View</a>` : ""}</td>
+                            <td>${contractor.contractor || ""}</td>
+                            <td style="text-align:center;">${contractor.vendorcode || ""}</td>
+                            <td style="text-align:center;">${contractor.agreement ? `<a href="${contractor.agreement}" target="_blank" class="btn btn-info btn-xs">View</a>` : ""}</td>
+                            <td style="text-align:center;">${contractor.workdesc || ""}</td>
+                            <td class="date-column" style="text-align:center; ${isAgreementExpiring ? 'color:red;font-weight:bold;' : ''}">${contractor.agreementvalidupto || ""}</td>
+                            <td style="text-align:center; ${isAgreementExpiring ? 'color:red;font-weight:bold;' : ''}">${agreementDays}</td>
+                            <td style="text-align:center;">${contractor.apo ? `<a href="${contractor.apo}" target="_blank" class="btn btn-info btn-xs">View</a>` : ""}</td>
+                            <td class="date-column" style="text-align:center; ${isAPOExpiring ? 'color:red;font-weight:bold;' : ''}">${contractor.apovalidupto || ""}</td>
+                            <td style="text-align:center; ${isAPOExpiring ? 'color:red;font-weight:bold;' : ''}">${apoDays}</td>
+                            <td style="text-align:center;">${contractor.pbg ? `<a href="${contractor.pbg}" target="_blank" class="btn btn-info btn-xs">View</a>` : ""}</td>
+                            <td class="date-column" style="text-align:center; ${isPBGExpiring ? 'color:red;font-weight:bold;' : ''}">${contractor.pbgvalidupto || ""}</td>
+                            <td style="text-align:center; ${isPBGExpiring ? 'color:red;font-weight:bold;' : ''}">${pbgDays}</td>
+                            <td style="text-align:center;">${contractor.po ? `<a href="${contractor.po}" target="_blank" class="btn btn-info btn-xs">View</a>` : ""}</td>
+                            <td style="text-align:center;">
+                                <button class="btn btn-primary btn-sm" onclick="window.editContractor('${tenderKey}','${contractorKey}')"><i class="glyphicon glyphicon-edit"></i> Edit</button><br>
+                                <button class="btn btn-danger btn-sm" onclick="window.deleteContractor('${tenderKey}','${contractorKey}')"><i class="glyphicon glyphicon-trash"></i> Delete</button>
+                            </td>
+                            <td ${rowspanAttr} style="${styleCenter}">
+                                <button class="btn btn-success btn-sm" onclick="window.addContractor('${tenderKey}')"><i class="glyphicon glyphicon-plus"></i> Add Contractor</button><br><br>
+                                <button class="btn btn-primary btn-sm" onclick="window.editTender('${tenderKey}')"><i class="glyphicon glyphicon-edit"></i> Edit Tender</button><br><br>
+                                <button class="btn btn-danger btn-sm" onclick="window.deleteTender('${tenderKey}')"><i class="glyphicon glyphicon-trash"></i> Delete Tender</button>
+                            </td>
+                        `;
+                    } else {
+                        tr.innerHTML = `
+                            <td>${contractor.contractor || ""}</td>
+                            <td style="text-align:center;">${contractor.vendorcode || ""}</td>
+                            <td style="text-align:center;">${contractor.agreement ? `<a href="${contractor.agreement}" target="_blank" class="btn btn-info btn-xs">View</a>` : ""}</td>
+                            <td style="text-align:center;">${contractor.workdesc || ""}</td>
+                            <td class="date-column" style="text-align:center; ${isAgreementExpiring ? 'color:red;font-weight:bold;' : ''}">${contractor.agreementvalidupto || ""}</td>
+                            <td style="text-align:center; ${isAgreementExpiring ? 'color:red;font-weight:bold;' : ''}">${agreementDays}</td>
+                            <td style="text-align:center;">${contractor.apo ? `<a href="${contractor.apo}" target="_blank" class="btn btn-info btn-xs">View</a>` : ""}</td>
+                            <td class="date-column" style="text-align:center; ${isAPOExpiring ? 'color:red;font-weight:bold;' : ''}">${contractor.apovalidupto || ""}</td>
+                            <td style="text-align:center; ${isAPOExpiring ? 'color:red;font-weight:bold;' : ''}">${apoDays}</td>
+                            <td style="text-align:center;">${contractor.pbg ? `<a href="${contractor.pbg}" target="_blank" class="btn btn-info btn-xs">View</a>` : ""}</td>
+                            <td class="date-column" style="text-align:center; ${isPBGExpiring ? 'color:red;font-weight:bold;' : ''}">${contractor.pbgvalidupto || ""}</td>
+                            <td style="text-align:center; ${isPBGExpiring ? 'color:red;font-weight:bold;' : ''}">${pbgDays}</td>
+                            <td style="text-align:center;">${contractor.po ? `<a href="${contractor.po}" target="_blank" class="btn btn-info btn-xs">View</a>` : ""}</td>
+                            <td style="text-align:center;">
+                                <button class="btn btn-primary btn-sm" onclick="window.editContractor('${tenderKey}','${contractorKey}')"><i class="glyphicon glyphicon-edit"></i> Edit</button><br>
+                                <button class="btn btn-danger btn-sm" onclick="window.deleteContractor('${tenderKey}','${contractorKey}')"><i class="glyphicon glyphicon-trash"></i> Delete</button>
+                            </td>
+                        `;
+                    }
+                    if (rowBg) tr.style.background = rowBg;
+                    tbody.appendChild(tr);
+                    if (idx === 0) sl++;
+                }
+                if (tenderAdded) sl++;
+            }
+            countSpan.textContent = visibleCount;
+
+            // Store global alert list
+            globalAlertList = alertList;
+
+            // Update badge
+            if (alertList.length > 0) {
+                alertBadge.style.display = "inline-block";
+                alertBadge.textContent = alertList.length;
+            } else {
+                alertBadge.style.display = "none";
+            }
+
+            // Show popup only once per session if there are alerts
+            if (!window.popupShown && alertList.length > 0) {
+                window.popupShown = true;
+                showAlertPopup(alertList);
+            }
+        }, { onlyOnce: false });
+    }
+
+    // ----- Show Alert Popup -----
+    function showAlertPopup(alertList) {
+        // Sort by days ascending
+        alertList.sort((a, b) => a.days - b.days);
+
+        let html = `
+        <div style="margin-bottom:10px;text-align:right">
+            <button id="exportAlert" class="btn btn-success btn-sm">
+                📊 Export to Excel
+            </button>
+        </div>
+        <div style="max-height:450px;overflow-y:auto;">
+        <table id="alertTable" class="table table-bordered table-striped">
+            <thead style="position:sticky;top:0;background:#0d6efd;color:white;">
+                <tr>
+                    <th style="text-align:center;">SL</th>
+                    <th style="text-align:center;">Vendor Code</th>
+                    <th style="text-align:center;">Vendor</th>
+                    <th style="text-align:center;">Tender ID</th>
+                    <th style="text-align:center;">Tender Name</th>
+                    <th style="text-align:center;">Type</th>
+                    <th style="text-align:center;">Expiry Date</th>
+                    <th style="text-align:center;">Days Left</th>
+                </tr>
+            </thead>
+            <tbody>
+        `;
+
+        alertList.forEach((item, index) => {
+            let rowColor = "";
+            if (item.days <= 90) {
+                rowColor = "#ffd6d6";  // Red - critical
+            } else if (item.days <= 180) {
+                rowColor = "#fff8cc";  // Yellow - warning
+            } else {
+                rowColor = "#e6f7ff";  // Light blue - info
+            }
+
+            html += `
+            <tr style="background:${rowColor}">
+                <td style="text-align:center;">${index + 1}</td>
+                <td>${escapeHtml(item.vendorcode)}</td>
+                <td>${escapeHtml(item.contractor)}</td>
+                <td>${escapeHtml(item.tenderid)}</td>
+                <td>${escapeHtml(item.tendername)}</td>
+                <td><strong>${item.type}</strong></td>
+                <td>${item.date}</td>
+                <td style="text-align:center;font-weight:bold;">${item.days}</td>
+            </tr>
+            `;
+        });
+
+        html += `
+            </tbody>
+        </table>
+        </div>
+        `;
+
+        Swal.fire({
+            title: "⚠️ Expiring Agreements / APO / PBG",
+            width: 1000,
+            html: html,
+            confirmButtonText: "Close",
+            didOpen: () => {
+                document.getElementById("exportAlert").onclick = function() {
+                    const wb = XLSX.utils.book_new();
+                    const ws = XLSX.utils.table_to_sheet(
+                        document.getElementById("alertTable")
+                    );
+                    XLSX.utils.book_append_sheet(wb, ws, "Expiry Alerts");
+                    XLSX.writeFile(wb, "Expiry_Alerts.xlsx");
+                };
+            }
+        });
+    }
+
+    // ---- Expose functions to window for inline onclick ----
+    window.editTender = async function(tenderKey) {
+        try {
+            const tenderRef = ref(db, `tenders/${tenderKey}`);
+            const snap = await get(tenderRef);
+            if (!snap.exists()) { Swal.fire("Not Found","Tender does not exist.","error"); return; }
+            const tender = snap.val();
+
+            const result = await Swal.fire({
+                title: "Edit Tender",
+                width: "480px",
+                html: `
+                    <div style="text-align:left;font-size:12px;width:100%;display:flex;flex-direction:column;gap:6px;">
+                        <label><span style="color:red;">Tender ID:</span> <input id="edit_tenderid" class="swal2-input" value="${escapeHtml(tender.tenderid||'')}" style="margin:0;"></label>
+                        <label><span style="color:red;">Tender Name:</span> <input id="edit_tendername" class="swal2-input" value="${escapeHtml(tender.tendername||'')}" style="margin:0;"></label>
+                        <label><span style="color:red;">Work Type:</span> <select id="edit_worktype" class="swal2-input" style="margin:0;"><option value="opex" ${tender.worktype==="opex"?"selected":""}>OPEX</option><option value="capex" ${tender.worktype==="capex"?"selected":""}>CAPEX</option></select></label>
+                        <label><span style="color:red;">Tender Document PDF URL</span>
+                            <div style="display:flex;gap:6px;align-items:center;">
+                                <input id="edit_tenderdocurl" class="swal2-input" value="${escapeHtml(tender.tenderdocument||'')}" style="margin:0;flex:1;">
+                                <button type="button" class="btn btn-sm btn-primary" id="edit_uploadTenderPdf">Upload</button>
+                            </div>
+                        </label>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: "SAVE CHANGES",
+                cancelButtonText: "Cancel",
+                didOpen: () => {
+                    document.getElementById("edit_uploadTenderPdf").addEventListener("click", ()=> window.open(appsScriptUrl,"uploadPopup","width=600,height=500"));
+                },
+                preConfirm: async () => {
+                    const tenderid = document.getElementById("edit_tenderid").value.trim();
+                    const tendername = document.getElementById("edit_tendername").value.trim();
+                    const worktype = document.getElementById("edit_worktype").value.trim();
+                    const tenderdocument = document.getElementById("edit_tenderdocurl").value.trim();
+                    if (!tenderid || !tendername) { Swal.showValidationMessage("Tender ID and Name required"); return false; }
+                    try {
+                        await update(ref(db, `tenders/${tenderKey}`), { tenderid, tendername, worktype, tenderdocument });
+                        return true;
+                    } catch(e) { Swal.showValidationMessage(e.message); return false; }
+                }
+            });
+            if (result.isConfirmed) Swal.fire("Updated","Tender updated successfully.","success");
+        } catch(e) { Swal.fire("Error",e.message,"error"); }
+    };
+
+    window.deleteTender = async function(tenderKey) {
+        try {
+            const snap = await get(ref(db, `tenders/${tenderKey}`));
+            if (!snap.exists()) { Swal.fire("Not Found","","error"); return; }
+            const tender = snap.val();
+            const cnt = Object.keys(tender.contractors||{}).length;
+            const res = await Swal.fire({
+                title: "Delete Tender?",
+                html: `<div><b>${escapeHtml(tender.tenderid||"")}</b><br>${escapeHtml(tender.tendername||"")}<br><br>${cnt>0 ? `<span style="color:red;">This tender has ${cnt} contractor(s). All will be deleted.</span>` : "No contractors."}</div>`,
+                icon: "warning", showCancelButton: true, confirmButtonColor: "#d33", confirmButtonText: "YES, DELETE"
+            });
+            if (res.isConfirmed) {
+                await remove(ref(db, `tenders/${tenderKey}`));
+                Swal.fire("Deleted","Tender and contractors deleted.","success");
+            }
+        } catch(e) { Swal.fire("Error",e.message,"error"); }
+    };
+
+    window.editContractor = async function(tenderKey, contractorKey) {
+        try {
+            const contractorRef = ref(db, `tenders/${tenderKey}/contractors/${contractorKey}`);
+            const snap = await get(contractorRef);
+            if (!snap.exists()) { Swal.fire("Not Found","Contractor does not exist.","error"); return; }
+            const contractor = snap.val();
+
+            const result = await Swal.fire({
+                title: "Edit Contractor",
+                width: "520px",
+                html: `
+                    <div style="text-align:left;font-size:12px;width:100%;display:flex;flex-direction:column;gap:6px;">
+                        <label><span style="color:red;">Vendor:</span> <input id="edit_contractor" class="swal2-input" value="${escapeHtml(contractor.contractor||'')}" style="margin:0;"></label>
+                        <label><span style="color:red;">Vendor Code:</span> <input id="edit_vendorcode" class="swal2-input" value="${escapeHtml(contractor.vendorcode||'')}" style="margin:0;"></label>
+                        <label><span style="color:red;">Work Description:</span> <input id="edit_workdesc" class="swal2-input" value="${escapeHtml(contractor.workdesc||'')}" style="margin:0;"></label>
+                        <label><span style="color:red;">Agreement PDF URL</span> <div style="display:flex;gap:6px;align-items:center;"><input id="edit_agreeurl" class="swal2-input" value="${escapeHtml(contractor.agreement||'')}" style="margin:0;flex:1;"><button type="button" class="btn btn-sm btn-primary" id="edit_uploadAgreement">Upload</button></div></label>
+                        <label><span style="color:red;">Agreement End Date:</span> <input id="edit_agreeenddate" type="date" class="swal2-input" value="${formatDateForInput(contractor.agreementvalidupto)}" style="margin:0;"></label>
+                        <label><span style="color:red;">APO PDF URL</span> <div style="display:flex;gap:6px;align-items:center;"><input id="edit_apourl" class="swal2-input" value="${escapeHtml(contractor.apo||'')}" style="margin:0;flex:1;"><button type="button" class="btn btn-sm btn-primary" id="edit_uploadAPO">Upload</button></div></label>
+                        <label><span style="color:red;">APO End Date:</span> <input id="edit_apoenddate" type="date" class="swal2-input" value="${formatDateForInput(contractor.apovalidupto)}" style="margin:0;"></label>
+                        <label><span style="color:red;">PBG PDF URL</span> <div style="display:flex;gap:6px;align-items:center;"><input id="edit_pbgurl" class="swal2-input" value="${escapeHtml(contractor.pbg||'')}" style="margin:0;flex:1;"><button type="button" class="btn btn-sm btn-primary" id="edit_uploadPBG">Upload</button></div></label>
+                        <label><span style="color:red;">PBG End Date:</span> <input id="edit_pbgenddate" type="date" class="swal2-input" value="${formatDateForInput(contractor.pbgvalidupto)}" style="margin:0;"></label>
+                        <label><span style="color:red;">PO PDF URL</span> <div style="display:flex;gap:6px;align-items:center;"><input id="edit_pourl" class="swal2-input" value="${escapeHtml(contractor.po||'')}" style="margin:0;flex:1;"><button type="button" class="btn btn-sm btn-primary" id="edit_uploadPO">Upload</button></div></label>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: "SAVE CHANGES",
+                didOpen: () => {
+                    ["edit_uploadAgreement","edit_uploadAPO","edit_uploadPBG","edit_uploadPO"].forEach(id => {
+                        document.getElementById(id)?.addEventListener("click", ()=> window.open(appsScriptUrl,"uploadPopup","width=600,height=500"));
+                    });
+                },
+                preConfirm: async () => {
+                    const contractorName = document.getElementById("edit_contractor").value.trim();
+                    const vendorcode = document.getElementById("edit_vendorcode").value.trim();
+                    const workdesc = document.getElementById("edit_workdesc").value.trim();
+                    const agreement = document.getElementById("edit_agreeurl").value.trim();
+                    const agreementvalidupto = formatDateDDMMYYYY(document.getElementById("edit_agreeenddate").value);
+                    const apo = document.getElementById("edit_apourl").value.trim();
+                    const apovalidupto = formatDateDDMMYYYY(document.getElementById("edit_apoenddate").value);
+                    const pbg = document.getElementById("edit_pbgurl").value.trim();
+                    const pbgvalidupto = formatDateDDMMYYYY(document.getElementById("edit_pbgenddate").value);
+                    const po = document.getElementById("edit_pourl").value.trim();
+                    if (!contractorName || !vendorcode) { Swal.showValidationMessage("Vendor and Code required"); return false; }
+                    try {
+                        await update(contractorRef, { contractor:contractorName, vendorcode, workdesc, agreement, agreementvalidupto, apo, apovalidupto, pbg, pbgvalidupto, po });
+                        return true;
+                    } catch(e) { Swal.showValidationMessage(e.message); return false; }
+                }
+            });
+            if (result.isConfirmed) Swal.fire("Updated","Contractor updated.","success");
+        } catch(e) { Swal.fire("Error",e.message,"error"); }
+    };
+
+    window.deleteContractor = async function(tenderKey, contractorKey) {
+        try {
+            const contractorRef = ref(db, `tenders/${tenderKey}/contractors/${contractorKey}`);
+            const snap = await get(contractorRef);
+            if (!snap.exists()) { Swal.fire("Not Found","","error"); return; }
+            const contractor = snap.val();
+            const res = await Swal.fire({
+                title: "Delete Contractor?",
+                html: `<b>Vendor:</b> ${escapeHtml(contractor.contractor||"")}<br><b>Code:</b> ${escapeHtml(contractor.vendorcode||"")}`,
+                icon: "warning", showCancelButton: true, confirmButtonColor: "#d33", confirmButtonText: "YES, DELETE"
+            });
+            if (res.isConfirmed) {
+                await remove(contractorRef);
+                Swal.fire("Deleted","Contractor deleted.","success");
+            }
+        } catch(e) { Swal.fire("Error",e.message,"error"); }
+    };
+
+    window.addContractor = async function(tenderKey) {
+        try {
+            const tenderSnap = await get(ref(db, `tenders/${tenderKey}`));
+            if (!tenderSnap.exists()) { Swal.fire("Not Found","Tender not found.","error"); return; }
+            const tender = tenderSnap.val();
+            const tenderId = tender.tenderid || "";
+            const tenderName = tender.tendername || "";
+
+            const result = await Swal.fire({
+                title: "Add New Contractor",
+                width: "520px",
+                html: `
+                    <div style="text-align:left;font-size:12px;width:100%;display:flex;flex-direction:column;gap:6px;">
+                        <div style="background:#f5f5f5;padding:8px;border-radius:5px;margin-bottom:5px;"><b>Tender ID:</b> ${escapeHtml(tenderId)}<br><b>Tender:</b> ${escapeHtml(tenderName)}</div>
+                        <label><span style="color:red;">Vendor:</span> <input id="add_contractor" class="swal2-input" placeholder="Vendor Name" style="margin:0;"></label>
+                        <label><span style="color:red;">Vendor Code:</span> <input id="add_vendorcode" class="swal2-input" placeholder="Vendor Code" style="margin:0;"></label>
+                        <label><span style="color:red;">Work Description:</span> <input id="add_workdesc" class="swal2-input" placeholder="Work Desc" style="margin:0;"></label>
+                        <label><span style="color:red;">Agreement PDF URL</span> <div style="display:flex;gap:6px;align-items:center;"><input id="add_agreeurl" class="swal2-input" placeholder="PDF URL" style="margin:0;flex:1;"><button type="button" class="btn btn-sm btn-primary" id="add_uploadAgreement">Upload</button></div></label>
+                        <label><span style="color:red;">Agreement End Date:</span> <input id="add_agreeenddate" type="date" class="swal2-input" style="margin:0;"></label>
+                        <label><span style="color:red;">APO PDF URL</span> <div style="display:flex;gap:6px;align-items:center;"><input id="add_apourl" class="swal2-input" placeholder="APO PDF" style="margin:0;flex:1;"><button type="button" class="btn btn-sm btn-primary" id="add_uploadAPO">Upload</button></div></label>
+                        <label><span style="color:red;">APO End Date:</span> <input id="add_apoenddate" type="date" class="swal2-input" style="margin:0;"></label>
+                        <label><span style="color:red;">PBG PDF URL</span> <div style="display:flex;gap:6px;align-items:center;"><input id="add_pbgurl" class="swal2-input" placeholder="PBG PDF" style="margin:0;flex:1;"><button type="button" class="btn btn-sm btn-primary" id="add_uploadPBG">Upload</button></div></label>
+                        <label><span style="color:red;">PBG End Date:</span> <input id="add_pbgenddate" type="date" class="swal2-input" style="margin:0;"></label>
+                        <label><span style="color:red;">PO PDF URL</span> <div style="display:flex;gap:6px;align-items:center;"><input id="add_pourl" class="swal2-input" placeholder="PO PDF" style="margin:0;flex:1;"><button type="button" class="btn btn-sm btn-primary" id="add_uploadPO">Upload</button></div></label>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: "ADD CONTRACTOR",
+                cancelButtonText: "Cancel",
+                didOpen: () => {
+                    ["add_uploadAgreement","add_uploadAPO","add_uploadPBG","add_uploadPO"].forEach(id => {
+                        document.getElementById(id)?.addEventListener("click", ()=> window.open(appsScriptUrl,"uploadPopup","width=600,height=500"));
+                    });
+                },
+                preConfirm: async () => {
+                    const contractor = document.getElementById("add_contractor").value.trim();
+                    const vendorcode = document.getElementById("add_vendorcode").value.trim();
+                    const workdesc = document.getElementById("add_workdesc").value.trim();
+                    const agreement = document.getElementById("add_agreeurl").value.trim();
+                    const agreementvalidupto = formatDateDDMMYYYY(document.getElementById("add_agreeenddate").value);
+                    const apo = document.getElementById("add_apourl").value.trim();
+                    const apovalidupto = formatDateDDMMYYYY(document.getElementById("add_apoenddate").value);
+                    const pbg = document.getElementById("add_pbgurl").value.trim();
+                    const pbgvalidupto = formatDateDDMMYYYY(document.getElementById("add_pbgenddate").value);
+                    const po = document.getElementById("add_pourl").value.trim();
+                    if (!contractor || !vendorcode) { Swal.showValidationMessage("Vendor and Code required"); return false; }
+                    try {
+                        const newRef = push(ref(db, `tenders/${tenderKey}/contractors`));
+                        await set(newRef, { contractor, vendorcode, workdesc, agreement, agreementvalidupto, apo, apovalidupto, pbg, pbgvalidupto, po });
+                        return true;
+                    } catch(e) { Swal.showValidationMessage(e.message); return false; }
+                }
+            });
+            if (result.isConfirmed) {
+                Swal.fire("Added","Contractor added successfully.","success");
+                return true;
+            }
+            return false;
+        } catch(e) { Swal.fire("Error",e.message,"error"); return false; }
+    };
+
+    // ---- ADD NEW TENDER (main entry) ----
+    document.getElementById("addBtn").addEventListener("click", async () => {
+        const tenderResult = await Swal.fire({
+            title: "Add New Tender",
+            width: "480px",
+            html: `
+                <div style="text-align:left;font-size:12px;width:100%;display:flex;flex-direction:column;gap:6px;">
+                    <label><span style="color:red;">Tender ID:</span> <input id="tenderid" class="swal2-input" placeholder="Tender ID" style="margin:0;"></label>
+                    <label><span style="color:red;">Tender Name:</span> <input id="tendername" class="swal2-input" placeholder="Tender Name" style="margin:0;"></label>
+                    <label><span style="color:red;">Work Type:</span> <select id="worktype" class="swal2-input" style="margin:0;"><option value="opex">OPEX</option><option value="capex">CAPEX</option></select></label>
+                    <label><span style="color:red;">Tender Document PDF URL</span> <div style="display:flex;gap:6px;align-items:center;"><input id="tenderdocurl" class="swal2-input" placeholder="PDF URL" style="margin:0;flex:1;"><button type="button" class="btn btn-sm btn-primary" id="uploadPdfBtn4">Upload</button></div></label>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: "ADD TENDER",
+            cancelButtonText: "Cancel",
+            didOpen: () => {
+                document.getElementById("uploadPdfBtn4")?.addEventListener("click", ()=> window.open(appsScriptUrl,"uploadPopup","width=600,height=500"));
+            },
+            preConfirm: async () => {
+                const tenderid = document.getElementById("tenderid").value.trim();
+                const tendername = document.getElementById("tendername").value.trim();
+                const worktype = document.getElementById("worktype").value.trim();
+                const tenderdocument = document.getElementById("tenderdocurl").value.trim();
+                if (!tenderid || !tendername) { Swal.showValidationMessage("Tender ID and Name required"); return false; }
+                try {
+                    const all = await get(ref(db, "tenders"));
+                    if (all.exists()) {
+                        for (const k in all.val()) {
+                            if (String(all.val()[k].tenderid||"").trim().toLowerCase() === tenderid.toLowerCase()) {
+                                Swal.showValidationMessage("Tender ID already exists!"); return false;
+                            }
+                        }
+                    }
+                    const newRef = push(ref(db, "tenders"));
+                    await set(newRef, { tenderid, tendername, worktype, tenderdocument, contractors: {} });
+                    return { tenderKey: newRef.key, tenderid, tendername };
+                } catch(e) { Swal.showValidationMessage(e.message); return false; }
+            }
+        });
+        if (!tenderResult.isConfirmed) return;
+        const { tenderKey, tenderid, tendername } = tenderResult.value;
+
+        await Swal.fire({ icon: "success", title: "Tender Added", html: `Tender <b>${tenderid}</b> added. Now add contractors.`, confirmButtonText: "ADD CONTRACTOR" });
+
+        // loop add contractors
+        let addMore = true;
+        while (addMore) {
+            const added = await window.addContractor(tenderKey);
+            if (!added) break;
+            const more = await Swal.fire({ title: "Contractor Added", text: "Add another contractor?", icon: "success", showCancelButton: true, confirmButtonText: "YES, ADD ANOTHER", cancelButtonText: "FINISH" });
+            if (!more.isConfirmed) addMore = false;
+        }
+        Swal.fire({ icon: "success", title: "Completed", html: `Tender <b>${tenderid}</b> ready.`, confirmButtonText: "OK" });
+    });
+
+    // ---- EXPORT ----
+    document.getElementById("exportBtn").addEventListener("click", function() {
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.table_to_sheet(document.getElementById("tender-table"));
+        XLSX.utils.book_append_sheet(wb, ws, "Tenders");
+        XLSX.writeFile(wb, "Tender_List.xlsx");
+    });
+
+    // ---- HOME ----
+    document.getElementById("home-btn").addEventListener("click", ()=> location.reload());
+
+    // ---- SEARCH ----
+    document.getElementById("searchInput").addEventListener("keyup", renderTable);
+
+    // ---- INIT ----
+    renderTable();
+</script>
+</body>
+</html>
+

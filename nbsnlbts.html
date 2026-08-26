@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBSNL BTS</title>
+    
+  
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+     <script src="https://cdn.rawgit.com/rainabba/jquery-table2excel/1.1.0/dist/jquery.table2excel.min.js"></script>
+     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<style>
+    a{
+    text-decoration: none;
+    color: white;
+    cursor: pointer;
+}
+   #provdetaildiv{
+    position: fixed;
+    top: 200px; /* Distance from the top */
+      right: 100px; /* Distance from the right */
+      background-color: #FFDEC8;
+      border: 1px solid black;
+      z-index: 1000; /* Ensure it's above other elements */
+      overflow: auto;
+   }
+   #provdetailtable td  {
+    border: 1px solid black;
+   }
+   #provdetailtable th  {
+    border: 1px solid black;
+   }
+      /* Add this CSS to position the open-btn */
+      .main-content {
+      position: relative; /* Required for absolute positioning of child elements */
+      top: 25px;
+    }
+
+ .bulb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 10px;
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        .bulb.year {
+            background-color: #e5ff00;
+            box-shadow: 0 0 15px #e5ff00, 0 0 30px #e5ff00;
+        }
+        
+        .bulb.halfyear {
+            background-color: #ff0000;
+            box-shadow: 0 0 15px #ff0000, 0 0 30px #ff0000;
+        }
+    
+</style>
+
+<body>
+
+
+<div class="main-content">
+    <button class="btn btn-success" id="home-btn"> HOME</button>
+    <h1 style="display:flex; text-align: center; margin-left: 40%;"> NBSNL BTS LIST</h1>
+    
+<div>Total Count: <b id="searchcount"></b> </div>
+<div style="display: inline-flex; justify-content: space-evenly;" >
+    
+    <div  style="margin-right: 700px; width: 400px;" >
+        <!-- <select id="yearFilter" class="form-control">
+    <option>Loading...</option>
+</select> -->
+<br>
+    <input type="text" id="searchInput" class="form-control"
+           placeholder="🔍 Search keywords" width="500px"
+           >
+   </div>
+
+<div>
+    
+    <button class="btn btn-primary" id="exportBtn" >
+    📊 Export to Excel
+</button> 
+<button class="btn btn-primary" id="addBtn" style="margin-left: 50px;">
+    ➕ Add New Entry
+</button>
+</div>
+
+
+ </div>
+
+    <table class="table table-bordered" id="bts-table" style="margin-top: 20px;">
+      <thead>
+        <tr>
+          <th style="text-align: center;">SL</th>
+          <th style="text-align: center;">Vendor Code</th>
+          <th style="text-align: center;">Contract Code</th>
+          <th style="text-align: center;">Name</th>
+          <th style="text-align: center;">BTS Location</th>
+          <th style="text-align: center;">Agreement</th>
+          <th style="text-align: center;">Agreement<br> Start Date</th>
+          <th style="text-align: center;">Agreement<br> End Date</th>
+          <th style="text-align: center;">Remaining Agreement <br> Validity (Days)</th>
+          <th style="text-align: center;">Monthly <br>Rent (₹)</th>
+          <th style="text-align: center;">Watch & Ward <br>Charges (₹)</th>
+          <th style="text-align: center;">Other TSP</th>
+          <th style="text-align: center;">Revision <br>Count</th>
+          <th style="text-align: center;">HPC Report</th>
+          <th style="text-align: center;">Next Revision <br> Date</th>
+          <th style="text-align: center;">Next Revision <br> Due After (Days)</th>
+          <th style="text-align: center;">Action</th>
+         
+        </tr>
+      </thead>
+      <tbody id="bts-body">
+        <!-- Filled by JS -->
+      </tbody>
+    </table>
+
+</div>
+   
+    
+
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <script src="https://cdn.rawgit.com/rainabba/jquery-table2excel/1.1.0/dist/jquery.table2excel.min.js"></script>
+    <script src="script.js"></script>
+
+       
+    <script type="module">
+
+ 
+
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+    import { getDatabase, ref, child, onValue, get, set, update,remove } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+   
+    import {app} from "./firebase-config.js";  
+
+//const app = initializeApp(firebaseConfig);
+
+const db = getDatabase(app);
+
+function getFirebaseServerDateTime() {
+  return new Promise((resolve, reject) => {
+    const offsetRef = ref(db, ".info/serverTimeOffset");
+    onValue(offsetRef, (snapshot) => {
+      const offset = snapshot.val();
+      if (offset !== null) {
+        const estimatedServerTime = new Date(Date.now() + offset);
+        const year = estimatedServerTime.getFullYear();
+        const month = String(estimatedServerTime.getMonth() + 1).padStart(2, '0');
+        const day = String(estimatedServerTime.getDate()).padStart(2, '0');
+        const date = `${day}-${month}-${year}`;
+        const time = estimatedServerTime.toTimeString().split(' ')[0];
+        resolve({date});
+      } else {
+        reject("Could not get server time offset.");
+      }
+    }, { onlyOnce: true });
+  });
+}
+
+const btnAddEntry = document.getElementById('addBtn');
+
+const dataRef = ref(db, 'btslist');
+
+
+let allbts = {};
+
+onValue(dataRef, (snapshot) => {
+    allbts = snapshot.val() || {};
+
+   
+     renderTable();
+});
+
+
+
+
+
+/* ============================= */
+/* ===== RENDER TABLE ========= */
+/* ============================= */
+async function renderTable() {
+
+    const { date } = await getFirebaseServerDateTime();
+
+    const tbody = document.getElementById("bts-body");
+   
+    const searchText = document.getElementById("searchInput").value.toLowerCase();
+    let searchcount = document.getElementById('searchcount');
+
+    tbody.innerHTML = "";
+
+    let filteredData = [];
+    let alertList = [];
+
+    for (let key in allbts) {
+
+        const btsdata = allbts[key];
+        btsdata.key = key;
+
+                 
+        /* SEARCH FILTER */
+        const rowText = Object.values(btsdata).join(" ").toLowerCase();
+        if (!rowText.includes(searchText)) continue;
+
+        filteredData.push(btsdata);
+
+
+    }
+
+
+   
+
+    /* ============================= */
+    /* ===== CREATE ROWS ========== */
+    /* ============================= */
+    filteredData.forEach((btsdata,index) => {
+
+        
+
+        function parseDMY(dateStr) {
+        if (!dateStr) return null;
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return null;
+        const [day, month, year] = parts.map(Number);
+        return new Date(year, month - 1, day);
+        }
+
+        const endDate = parseDMY(btsdata.agreeenddate);
+        const nextrevDate = parseDMY(btsdata.nextrevisiondate);
+        const currentDate = parseDMY(date);
+
+        let days = '';
+        let revdays = '';
+        if (endDate && currentDate) {
+        const diffTime = endDate - currentDate;
+        days = Math.floor(diffTime / (1000 * 3600 * 24));
+        }
+
+        if (nextrevDate && currentDate) {
+        const diffTime2 = nextrevDate - currentDate;
+        revdays = Math.floor(diffTime2 / (1000 * 3600 * 24));
+        }
+
+        if (
+            (days !== '' && days <= 365) ||
+            (revdays !== '' && revdays <= 180)
+        ) {
+            alertList.push({
+                // contractcode: btsdata.contractcode || "",
+                // location: btsdata.location || "",
+                // days: days,
+                // revdays: revdays
+                    vendorcode: btsdata.vendorcode || "",
+                    contractcode: btsdata.contractcode || "",
+                    location: btsdata.location || "",
+                    agreeenddate: btsdata.agreeenddate || "",
+                    nextrevisiondate: btsdata.nextrevisiondate || "",
+                    days: days,
+                    revdays: revdays
+            });
+        }
+
+
+     
+        const row = document.createElement("tr");
+
+
+
+        row.innerHTML = `
+            <td>${index+1}</td>
+            <td style="text-align: center;">${btsdata.vendorcode || ''}</td>
+            <td style="text-align: center;">${btsdata.contractcode || ''}</td>
+            <td>${btsdata.name || ''}</td>
+            <td>${btsdata.location || ''}</td>
+            <td style="text-align: center;">
+               ${
+        btsdata.agreeurl && btsdata.agreeurl.trim()
+        ? `<a href="${btsdata.agreeurl}" target="_blank" class="btn btn-primary btn-xs">
+                Click Here
+           </a>`
+        : `<span style="color:#999;"> PDF Not Available</span>`
+    }  
+              
+            </td>
+
+            <td style="text-align: center;">${btsdata.agreestartdate || ''}</td>
+            <td style="text-align: center;">${btsdata.agreeenddate || ''}</td>
+            <td style="text-align: center;">
+                ${days}
+                <br>
+                ${days && days <= 180
+                ? '<span class="bulb halfyear"></span>'
+                : days && days <= 365
+                ? '<span class="bulb year"></span>'
+                : ''
+                }
+                
+                
+
+            </td>
+            <td style="text-align: center;">${btsdata.monthlyrent || ''}</td>
+            <td style="text-align: center;">${btsdata.wwcharge || ''}</td>
+            <td>${btsdata.othertsp || ''}</td>
+            <td style="text-align: center;">${btsdata.rentrevisioncount || ''}</td>
+
+            <td style="text-align: center;">
+               ${
+              btsdata.hpcurl && btsdata.hpcurl.trim()
+              ? `<a href="${btsdata.hpcurl}" target="_blank" class="btn btn-primary btn-xs">
+                      Click Here
+                </a>`
+              : `<span style="color:#999;">PDF Not Available</span>`
+          }
+            </td>
+
+            <td style="text-align: center;">${btsdata.nextrevisiondate || ''}</td>
+            <td style="text-align: center;">
+                 ${revdays}
+                <br>
+                ${ revdays && revdays <= 180
+                ? '<span class="bulb halfyear"></span>'
+                :  revdays && revdays <= 365
+                ? '<span class="bulb year"></span>'
+                : ''
+                }
+                                                
+                </td>
+
+            <td style="width:130px;">
+                <button class="btn btn-info btn-xs edit-btn">Edit</button>
+                <button class="btn btn-danger btn-xs delete-btn">Delete</button>
+            </td>
+            
+           
+        `;
+        row.querySelector(".edit-btn").addEventListener("click", () => editBts(btsdata));
+        row.querySelector(".delete-btn").addEventListener("click", () => deleteBts(btsdata.key));
+        tbody.appendChild(row);
+    });
+    searchcount.innerText = filteredData.length;
+
+    // Show popup only when page first opens
+
+if (!window.popupShown && alertList.length > 0) {
+
+    window.popupShown = true;
+
+    // Sort by Agreement Days
+    alertList.sort((a, b) => a.days - b.days);
+
+    let html = `
+    <div style="margin-bottom:10px;text-align:right">
+        <button id="exportAlert"
+            class="btn btn-success btn-sm">
+            📊 Export to Excel
+        </button>
+    </div>
+
+    <div style="max-height:450px;overflow-y:auto;">
+    <table id="alertTable"
+           class="table table-bordered table-striped">
+
+        <thead style="position:sticky;top:0;background:#0d6efd;color:white;">
+            <tr>
+            <th style="text-align: center;">SL</th>
+            <th style="text-align: center;">Vendor Code</th>
+            <th style="text-align: center;">Contract Code</th>
+            <th style="text-align: center;">Location</th>
+            <th style="text-align: center;">Agreement <br> End Date</th>
+            <th style="text-align: center;">Agreement <br> Days Left</th>
+            <th style="text-align: center;">Next Revision <br> Date</th>
+            <th style="text-align: center;">Next Revision <br> Due Days</th>
+            </tr>
+        </thead>
+
+        <tbody>
+    `;
+
+    alertList.forEach((item,index)=>{
+
+        let rowColor="";
+        
+            if(item.days<=180 || ((item.revdays) && item.revdays<=90)){
+            rowColor="#ffd6d6";      // Red
+        }
+        else{
+            rowColor="#fff8cc";      // Yellow
+        }
+        
+
+        
+
+        html+=`
+        <tr style="background:${rowColor}">
+            <td>${index+1}</td>
+	    <td>${item.vendorcode}</td>
+            <td>${item.contractcode}</td>
+            <td>${item.location}</td>
+             <td>${item.agreeenddate}</td>
+            <td align="center">${item.days}</td>
+	    <td>${item.nextrevisiondate}</td>
+            <td align="center">${item.revdays}</td>
+        </tr>
+        `;
+    });
+
+    html+=`
+        </tbody>
+    </table>
+    </div>
+    `;
+
+    Swal.fire({
+
+        title:"Agreements / Revisions Requiring Attention",
+
+        width:1000,
+
+        html:html,
+
+        confirmButtonText:"Close",
+
+        didOpen:()=>{
+
+            document.getElementById("exportAlert").onclick=function(){
+
+                const wb=XLSX.utils.book_new();
+
+                const ws=XLSX.utils.table_to_sheet(
+                    document.getElementById("alertTable")
+                );
+
+                XLSX.utils.book_append_sheet(
+                    wb,
+                    ws,
+                    "Agreement Alert"
+                );
+
+                XLSX.writeFile(
+                    wb,
+                    "Agreement_Revision_Alert.xlsx"
+                );
+            };
+
+        }
+
+    });
+
+}
+
+
+
+}
+
+
+
+
+window.editBts = function (btsdata) {
+    console.log(btsdata);
+    console.log("Edit clicked", btsdata.key);
+    let revdate = btsdata.nextrevisiondate || "";
+
+if (revdate) {
+    const parts = revdate.split("-");
+    revdate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+}
+
+      const appsScriptUrl = "https://script.google.com/macros/s/AKfycbyChHcZ12eCuR2qbujMPA2M7mkH6eG3jWuyiElcFXkgbXTVMTj2tEWco4aBBocqtsnF/exec";
+
+  Swal.fire({
+    title: 'Edit Entry',
+    width: 500,
+    html: `
+    <div style="text-align: left; font-size: 12px; width: 100%; display: flex; flex-direction: column; gap: 0;">
+
+      <label><span style="color: red;">Name: </span>
+                <input id="swal_name" class="swal2-input" value="${btsdata.name}"  style="margin:0;">
+            </label>
+      
+      <label><span style="color: red;">Location: </span>
+                <input id="swal_location" class="swal2-input" value="${btsdata.location}" style="margin:0;">
+      </label>
+
+      <label><span style="color: red;">Monthly Rent: </span>
+                <input id="swal_monthlyrent" class="swal2-input" value="${btsdata.monthlyrent || ''}" style="margin:0;">
+            </label>
+      <label><span style="color: red;">Watch & Ward Charge: </span>
+                <input id="swal_ww" class="swal2-input" value="${btsdata.wwcharge || ''}" style="margin:0;">
+            </label>
+        <label><span style="color: red;">Rent Revision: </span>
+                <input id="swal_rr" class="swal2-input" value="${btsdata.rentrevisioncount || ''}" style="margin:0;">
+            </label>
+        <label><span style="color: red;">Next Revision Date: </span>
+                <input id="swal_nextrevdate" type= "date" class="swal2-input" value="${revdate || ''}" style="margin:0;">
+        </label>    
+        
+                <label><span style="color: red;">Agreement PDF URL: </span>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <input id="swal_agreeurl" class="swal2-input" value="${btsdata.agreeurl || ''}" style="margin:0; flex:1;">
+            <button type="button" class="btn btn-sm btn-primary" id="uploadPdfBtn1">Upload</button>
+          </div>
+        </label>
+            
+        <label><span style="color: red;">HPC PDF URL: </span>
+            <div style="display:flex; gap:6px; align-items:center;">
+                <input id="swal_hpcurl" class="swal2-input" value="${btsdata.hpcurl || ''}" style="margin:0; flex:1;">
+                <button type="button" class="btn btn-sm btn-primary" id="uploadPdfBtn2">Upload</button>
+                </div>
+               
+        </label>
+      
+      </div>
+    
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'Update',
+
+        didOpen: () => {
+      document.getElementById('uploadPdfBtn1').addEventListener('click', () => {
+        // Open as popup so window.opener is set in the upload page
+        window.open(appsScriptUrl, 'uploadPopup', 'width=600,height=500');
+      });
+
+      document.getElementById('uploadPdfBtn2').addEventListener('click', () => {
+        // Open as popup so window.opener is set in the upload page
+        window.open(appsScriptUrl, 'uploadPopup', 'width=600,height=500');
+      });
+    },
+
+    preConfirm: async () => {
+       function formatDateDDMMYYYY(dateStr) {
+      if (!dateStr) return "";
+      const [year, month, day] = dateStr.split("-");
+      return `${day}-${month}-${year}`;
+      }
+
+      const key = btsdata.key; // locked
+      const name = document.getElementById('swal_name').value.trim();
+      const location = document.getElementById('swal_location').value.trim();
+      const monthlyrent = String(document.getElementById('swal_monthlyrent').value.trim());
+      const wwcharge = String(document.getElementById('swal_ww').value.trim());
+      const rr = String(document.getElementById('swal_rr').value.trim());
+      const nextrevdate = formatDateDDMMYYYY(document.getElementById('swal_nextrevdate').value.trim());
+      const agreeurl = document.getElementById('swal_agreeurl').value.trim();
+      const hpcurl = document.getElementById('swal_hpcurl').value.trim();
+      
+       if (!key) {
+        Swal.showValidationMessage('Invalid record key');
+        return false;
+      }
+
+    //   if (!customer) {
+    //     Swal.showValidationMessage('Customer Name required');
+    //     return false;
+    //   }
+
+      try {
+     
+
+//console.log(JSON.stringify(data));
+        await update(ref(db, `btslist/${key}`), {
+           name: name,
+	       location: location,
+	       monthlyrent: monthlyrent,
+           wwcharge: wwcharge,
+           rentrevisioncount: rr,
+           nextrevisiondate: nextrevdate,
+           agreeurl: agreeurl,
+           hpcurl: hpcurl
+
+        });
+        console.log("Update finished");
+        return true;
+      } catch (err) {
+            console.error("ERROR:", err);
+            console.error("STACK:", err.stack);
+            Swal.showValidationMessage(err.message);
+      }
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Swal.fire("Updated", "entry updated", "success");
+      //window.reload();
+      //loadStaffList();
+    }
+  });
+};
+
+window.deleteBts = async function (key) {
+  const confirm = await Swal.fire({
+    title: 'Delete?',
+    text: `Delete Entry ${key}?`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33'
+  });
+
+  if (!confirm.isConfirmed) return;
+
+  try {
+    await set(ref(db, `btslist/${key}`), null);
+    Swal.fire("Deleted", "Entry removed", "success");
+    //window.reload();
+
+  } catch (err) {
+    Swal.fire("Error", err.message, "error");
+  }
+};
+
+/* ============================= */
+/* ===== SEARCH + FILTER ===== */
+/* ============================= */
+document.getElementById("searchInput").addEventListener("keyup", function(){
+    renderTable();
+    
+});
+
+
+/*============Add New Entry=================== */
+
+btnAddEntry.addEventListener("click", async () => {
+
+    const appsScriptUrl = "https://script.google.com/macros/s/AKfycbyChHcZ12eCuR2qbujMPA2M7mkH6eG3jWuyiElcFXkgbXTVMTj2tEWco4aBBocqtsnF/exec";
+    const result = await Swal.fire({
+        title: "Add New Entry",
+        width: "480px",
+        html: `
+        <div style="text-align: left; font-size: 12px; width: 100%; display: flex; flex-direction: column; gap: 0;">
+            <label><span style="color: red;">Vendor Code: </span>
+                <input id="vendorcode" class="swal2-input" placeholder="Enter Vendor Code" style="margin:0;">
+            </label>
+
+            <label><span style="color: red;">Contract Code: </span>
+                <input id="contractcode" class="swal2-input" placeholder="Enter Contract Code" style="margin:0;">
+            </label>
+
+            <label><span style="color: red;">Owner's Name: </span>
+                <input id="name" class="swal2-input" placeholder="Enter Owner's Name" style="margin:0;">
+            </label>
+
+            
+            <label><span style="color: red;">Location: </span>
+                <input id="location" class="swal2-input" placeholder="Enter Location" style="margin:0;">
+            </label>
+
+            <label><span style="color: red;"> Agreement Start Date: </span>
+                <input id="agreestartdate" type="date" class="swal2-input" placeholder="Enter Agreement Start Date" style="margin:0;">
+            </label>
+	     <label><span style="color: red;"> Agreement End Date: </span>
+                <input id="agreeenddate" type="date" class="swal2-input" placeholder="Enter Agreement End Date" style="margin:0;">
+            </label>
+
+            <label><span style="color: red;"> Agreement PDF URL </span>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <input id="agreeurl" class="swal2-input" placeholder="Enter PDF URL" style="margin:0; flex:1;">
+                    <button type="button" class="btn btn-sm btn-primary" id="uploadPdfBtn1">Upload</button>
+                </div>
+                
+            </label>
+            <label><span style="color: red;"> HPC PDF URL </span>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <input id="hpcurl" class="swal2-input" placeholder="Enter PDF URL" style="margin:0; flex:1;">
+                    <button type="button" class="btn btn-sm btn-primary" id="uploadPdfBtn2">Upload</button>
+                </div>
+               
+            </label>
+            <label><span style="color: red;">Monthly Rent (₹): </span>
+                <input id="monthlyrent" class="swal2-input" placeholder="Enter Monthly Rent" style="margin:0; flex:1;">
+            </label>
+	     <label><span style="color: red;">Monthly Watch & Ward Charge (₹): </span>
+                <input id="ww" class="swal2-input" placeholder="Enter Monthly Watch & Ward Charge" style="margin:0;">
+            </label>
+
+          
+        </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: "ADD",
+
+          didOpen: () => {
+      document.getElementById('uploadPdfBtn1').addEventListener('click', () => {
+        // Open as popup so window.opener is set in the upload page
+        window.open(appsScriptUrl, 'uploadPopup', 'width=600,height=500');
+      });
+
+      document.getElementById('uploadPdfBtn2').addEventListener('click', () => {
+        // Open as popup so window.opener is set in the upload page
+        window.open(appsScriptUrl, 'uploadPopup', 'width=600,height=500');
+      });
+    },
+	
+	preConfirm: async () => {
+
+    function formatDateDDMMYYYY(dateStr) {
+  if (!dateStr) return "";
+  const [year, month, day] = dateStr.split("-");
+  return `${day}-${month}-${year}`;
+  }
+      
+  const key = String(document.getElementById('contractcode').value.trim());
+  const name = document.getElementById('name').value.trim();
+  const location = document.getElementById('location').value.trim();
+  const vendorcode = String(document.getElementById('vendorcode').value.trim());
+  const monthlyrent = String(document.getElementById('monthlyrent').value.trim());
+  const wwcharge = String(document.getElementById('ww').value.trim());
+  const agreestartdate = formatDateDDMMYYYY(document.getElementById('agreestartdate').value.trim());
+  const agreeenddate = formatDateDDMMYYYY(document.getElementById('agreeenddate').value.trim());
+  const agreeurl = document.getElementById('agreeurl').value.trim();
+  const hpcurl = document.getElementById('hpcurl').value.trim();
+      
+       if (!key) {
+        Swal.showValidationMessage('Please Enter Contract Code');
+        return false;
+      }
+
+   
+
+      try {
+
+        const dbRef = ref(db, "btslist/" + key);
+            const snapshot = await get(dbRef);
+
+            if (snapshot.exists()) {
+                Swal.fire("Entry already exists!");
+                return;
+            }
+     
+
+    //console.log(JSON.stringify(data));
+        await set(ref(db, `btslist/${key}`), {
+           name: name,
+	         location: location,
+           vendorcode: vendorcode,
+           contractcode: key,
+           agreestartdate: agreestartdate,
+           agreeenddate: agreeenddate,
+	         monthlyrent: monthlyrent,
+           wwcharge: wwcharge,
+           agreeurl: agreeurl,
+           hpcurl: hpcurl
+
+        });
+        console.log("adding finished");
+        return true;
+      } catch (err) {
+            console.error("ERROR:", err);
+            console.error("STACK:", err.stack);
+            Swal.showValidationMessage(err.message);
+      }
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Swal.fire("Added", "entry added", "success");
+      //window.reload();
+      //loadStaffList();
+    }
+  });
+
+});
+
+// Upload PDF //
+
+
+/* ============================= */
+/* ===== EXPORT TO EXCEL ===== */
+/* ============================= */
+document.getElementById("exportBtn").addEventListener("click", function () {
+
+   
+     const wb=XLSX.utils.book_new();
+
+                const ws=XLSX.utils.table_to_sheet(
+                    document.getElementById("bts-table")
+                );
+
+                XLSX.utils.book_append_sheet(
+                    wb,
+                    ws,
+                    "Rented_NBSNL_BTS"
+                );
+
+                XLSX.writeFile(
+                    wb,
+                    "Rented_NBSNL_BTS.xlsx"
+                );
+
+});
+
+    </script>
+</body>
+</html>
+
+
+
+
+
+
