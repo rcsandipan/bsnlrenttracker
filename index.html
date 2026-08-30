@@ -151,6 +151,9 @@
           const docSnap = await getDoc(userRef);
           if (docSnap.exists()) {
             const perno = docSnap.data().PerNo ;
+            const userpriv = docSnap.data().Priv ;
+
+            sessionStorage.setItem("userpriv", userpriv);
             console.log(perno);
             
             const dbref = ref(rtdb);
@@ -198,5 +201,4 @@ if(snapshot.exists()){
   </script>
 </body>
 </html>
-
 

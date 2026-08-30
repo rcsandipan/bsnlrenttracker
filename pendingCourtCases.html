@@ -1,4 +1,4 @@
-```html
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -262,7 +262,9 @@
                         <th>Date Hearing</th>
                         <th>Acts</th>
                         <th>CNR</th>
-                        <th>Actions</th>
+                        <th>Case Details</th>
+                        <!-- <th>Actions</th> -->
+                        <th id="thaction" class="action-col" style="display: none;">Action</th>
                     </tr>
                 </thead>
 
@@ -283,6 +285,14 @@
 
 <!-- Firebase -->
 <script type="module">
+
+    const userpriv = sessionStorage.getItem("userpriv");
+const actionHeader = document.getElementById('thaction');
+if (userpriv === 'SAU' || userpriv === 'LGL') {
+  actionHeader.style.display = 'table-cell';
+} else {
+  actionHeader.style.display = 'none';
+}
 
     import { initializeApp }
         from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
@@ -595,14 +605,17 @@
                         ${escapeHTML(caseData.cnr)}
                     </td>
 
-                    <td class="text-center">
-
+                    <td>
                         <button
                             class="btn btn-info btn-xs btn-action"
                             onclick="viewCase('${encodeURIComponent(caseData.key)}')">
                             <span class="glyphicon glyphicon-eye-open"></span>
                             VIEW
                         </button>
+                    </td>
+
+                    <td class="text-center action-col"
+        style="display: ${ (userpriv === 'SAU' || userpriv === 'LGL') ? 'table-cell' : 'none' };">
 
                         <button
                             class="btn btn-warning btn-xs btn-action"
@@ -1619,4 +1632,3 @@
 
 </body>
 </html>
-
