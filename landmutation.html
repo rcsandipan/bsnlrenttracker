@@ -94,15 +94,19 @@
 
  </div>
 
-    <table class="table table-bordered" id="bts-table" style="margin-top: 20px;">
+    <table class="table table-bordered" id="mutation-table" style="margin-top: 20px;">
       <thead>
         <tr>
           <th style="text-align: center;">SL</th>
-          <th style="text-align: center;">Property</th>
+          <th style="text-align: center;">Property ID</th>
+          <th style="text-align: center;">Asset No</th>
+          <th style="text-align: center;">Property Name</th>
+          <th style="text-align: center;">District</th>
           <th style="text-align: center;">Description</th>
           <th style="text-align: center;">Type</th>
           <th style="text-align: center;">Present Entitlement</th>
           <th style="text-align: center;">Certificate</th>
+          <th style="text-align: center;">Mutation Date</th>
           <th style="text-align: center;">Present Status</th>
           <th style="text-align: center;">Office Responsible</th>
           <th style="text-align: center;">Next Hearing Date</th>          
@@ -270,7 +274,10 @@ async function renderTable() {
 
         row.innerHTML = `
             <td>${index+1}</td>
+            <td style="text-align: center;">${mutationdata.propertyID || ''}</td>
+            <td style="text-align: center;">${mutationdata.assetno || ''}</td>
             <td style="text-align: center;">${mutationdata.propertyname || ''}</td>
+            <td style="text-align: center;">${mutationdata.district || ''}</td>
             <td style="text-align: center;">${mutationdata.propertydesc || ''}</td>
             <td>${mutationdata.type || ''}</td>
             <td>${mutationdata.presentEntitlement || ''}</td>
@@ -284,6 +291,7 @@ async function renderTable() {
     }  
               
             </td>
+            <td style="text-align: center;">${mutationdata.mutationDate || ''}</td>
 
             <td style="text-align: center;">${mutationdata.presentStatus || ''}</td>
             <td style="text-align: center;">${mutationdata.officeResponsible || ''}</td>
@@ -439,6 +447,14 @@ if (hearingdate) {
     html: `
     <div style="text-align: left; font-size: 12px; width: 100%; display: flex; flex-direction: column; gap: 0;">
 
+        <label><span style="color: red;">Property Name: </span>
+                <input id="swal_propertyname" class="swal2-input" value="${mutationdata.propertyID}" style="margin:0;">
+            </label>
+      
+      <label><span style="color: red;">Description: </span>
+                <input id="swal_propertydesc" class="swal2-input" value="${mutationdata.assetno}" style="margin:0;">
+      </label>
+
       <label><span style="color: red;">Property Name: </span>
                 <input id="swal_propertyname" class="swal2-input" value="${mutationdata.propertyname}"  style="margin:0;">
             </label>
@@ -590,40 +606,47 @@ btnAddEntry.addEventListener("click", async () => {
         width: "480px",
         html: `
         <div style="text-align: left; font-size: 12px; width: 100%; display: flex; flex-direction: column; gap: 0;">
-
-      <label><span style="color: red;">Property Name: </span>
-                <input id="swal_propertyname" class="swal2-input" value="${mutationdata.propertyname}"  style="margin:0;">
+             <label><span style="color: red;">Property Name: </span>
+                <input id="swal_propertyID" class="swal2-input" placeholder="Enter Property ID" style="margin:0;">
             </label>
       
       <label><span style="color: red;">Description: </span>
-                <input id="swal_propertydesc" class="swal2-input" value="${mutationdata.propertydesc}" style="margin:0;">
+                <input id="swal_assetNo" class="swal2-input" placeholder="Enter Property ID" style="margin:0;">
+      </label>
+
+      <label><span style="color: red;">Property Name: </span>
+                <input id="swal_propertyname" class="swal2-input" placeholder="Enter Property ID"  style="margin:0;">
+            </label>
+      
+      <label><span style="color: red;">Description: </span>
+                <input id="swal_propertydesc" class="swal2-input" placeholder="Enter Property ID" style="margin:0;">
       </label>
 
       <label><span style="color: red;">Property Type: </span>
-                <input id="swal_type" class="swal2-input" value="${mutationdata.type || ''}" style="margin:0;">
+                <input id="swal_type" class="swal2-input" placeholder="Enter Property ID" style="margin:0;">
             </label>
       
         <label><span style="color: red;">Present Entitlement: </span>
-                <input id="swal_entitlement" class="swal2-input" value="${mutationdata.presentEntitlement || ''}" style="margin:0;">
+                <input id="swal_entitlement" class="swal2-input" placeholder="Enter Property ID" style="margin:0;">
             </label>
            
         
         <label><span style="color: red;">Mutation PDF URL: </span>
           <div style="display:flex; gap:6px; align-items:center;">
-            <input id="swal_mutationDocUrl" class="swal2-input" value="${mutationdata.mutationDocUrl || ''}" style="margin:0; flex:1;">
+            <input id="swal_mutationDocUrl" class="swal2-input" placeholder="Enter Property ID" style="margin:0; flex:1;">
             <button type="button" class="btn btn-sm btn-primary" id="uploadPdfBtn1">Upload</button>
           </div>
         </label>
 
          <label><span style="color: red;">Present Status: </span>
-                <input id="swal_presentStatus" class="swal2-input" value="${mutationdata.presentStatus || ''}" style="margin:0;">
+                <input id="swal_presentStatus" class="swal2-input" placeholder="Enter Property ID" style="margin:0;">
             </label>
           <label><span style="color: red;">Office Responsible: </span>
-                <input id="swal_officeResponsible" class="swal2-input" value="${mutationdata.officeResponsible || ''}" style="margin:0;">
+                <input id="swal_officeResponsible" class="swal2-input" placeholder="Enter Property ID" style="margin:0;">
             </label>   
 
         <label><span style="color: red;">Next Hearing Date: </span>
-                <input id="swal_nexthearingdate" type= "date" class="swal2-input" value="${hearingdate || ''}" style="margin:0;">
+                <input id="swal_nexthearingdate" type= "date" class="swal2-input" placeholder="Enter Property ID" style="margin:0;">
         </label> 
         
       
@@ -649,7 +672,7 @@ btnAddEntry.addEventListener("click", async () => {
   return `${day}-${month}-${year}`;
   }
       
-      const key = String(document.getElementById('contractcode').value.trim());
+      const key = String(document.getElementById('propertyID').value.trim());
         
       const propertyname = document.getElementById('swal_propertyname').value.trim();
       const propertydesc = document.getElementById('swal_propertydesc').value.trim();
@@ -740,5 +763,4 @@ document.getElementById("exportBtn").addEventListener("click", function () {
     </script>
 </body>
 </html>
-
 
