@@ -102,7 +102,7 @@
           <th style="text-align: center;">Asset No</th>
           <th style="text-align: center;">Property Name</th>
           <th style="text-align: center;">District</th>
-          <th style="text-align: center;">Description</th>
+          <th style="text-align: center;">Total Area <br> (in Sq. Metre)</th>
           <th style="text-align: center;">Type</th>
           <th style="text-align: center;">Present Entitlement</th>
           <th style="text-align: center;">Certificate</th>
@@ -231,29 +231,25 @@ async function renderTable() {
         return new Date(year, month - 1, day);
         }
 
-        const endDate = parseDMY(mutationdata.agreeenddate);
-        const nextrevDate = parseDMY(mutationdata.nextrevisiondate);
+        
+        const nextHearingDate = parseDMY(mutationdata.nextHearingDate);
         const currentDate = parseDMY(date);
 
-        let days = '';
-        let revdays = '';
-        if (endDate && currentDate) {
-        const diffTime = endDate - currentDate;
-        days = Math.floor(diffTime / (1000 * 3600 * 24));
-        }
-
-        if (nextrevDate && currentDate) {
+       
+        let nextHearingDays = '';
+       
+        if (nextHearingDate && currentDate) {
         const diffTime2 = nextrevDate - currentDate;
-        revdays = Math.floor(diffTime2 / (1000 * 3600 * 24));
+        nextHearingDays = Math.floor(diffTime2 / (1000 * 3600 * 24));
         }
 
         if (
-            (days !== '' && days <= 365) ||
-            (revdays !== '' && revdays <= 180)
+           
+            (nextHearingDays !== '' && nextHearingDays <= 15)
         ) {
             alertList.push({
-                // contractcode: mutationdata.contractcode || "",
-                // location: mutationdata.location || "",
+                   propertyID: mutationdata.propertyID || "",
+                   propertyName: mutationdata.location || "",
                 // days: days,
                 // revdays: revdays
                     vendorcode: mutationdata.vendorcode || "",
@@ -278,7 +274,7 @@ async function renderTable() {
             <td style="text-align: center;">${mutationdata.assetno || ''}</td>
             <td style="text-align: center;">${mutationdata.propertyname || ''}</td>
             <td style="text-align: center;">${mutationdata.district || ''}</td>
-            <td style="text-align: center;">${mutationdata.propertydesc || ''}</td>
+            <td style="text-align: center;">${mutationdata.propertyDesc || ''}</td>
             <td>${mutationdata.type || ''}</td>
             <td>${mutationdata.presentEntitlement || ''}</td>
             <td style="text-align: center;">
@@ -447,20 +443,24 @@ if (hearingdate) {
     html: `
     <div style="text-align: left; font-size: 12px; width: 100%; display: flex; flex-direction: column; gap: 0;">
 
-        <label><span style="color: red;">Property Name: </span>
-                <input id="swal_propertyname" class="swal2-input" value="${mutationdata.propertyID}" style="margin:0;">
+        <label><span style="color: red;">Property ID: </span>
+                <input id="swal_propertyname" class="swal2-input" value="${mutationdata.propertyID}" style="margin:0;" disabled>
             </label>
       
-      <label><span style="color: red;">Description: </span>
+      <label><span style="color: red;">Asset No: </span>
                 <input id="swal_propertydesc" class="swal2-input" value="${mutationdata.assetno}" style="margin:0;">
       </label>
 
       <label><span style="color: red;">Property Name: </span>
                 <input id="swal_propertyname" class="swal2-input" value="${mutationdata.propertyname}"  style="margin:0;">
             </label>
+
+    <label><span style="color: red;">District: </span>
+                <input id="swal_district" class="swal2-input" value="${mutationdata.district}"  style="margin:0;">
+            </label>
       
       <label><span style="color: red;">Description: </span>
-                <input id="swal_propertydesc" class="swal2-input" value="${mutationdata.propertydesc}" style="margin:0;">
+                <input id="swal_propertydesc" class="swal2-input" value="${mutationdata.propertyDesc}" style="margin:0;">
       </label>
 
       <label><span style="color: red;">Property Type: </span>
@@ -611,23 +611,58 @@ btnAddEntry.addEventListener("click", async () => {
             </label>
       
       <label><span style="color: red;">Description: </span>
-                <input id="swal_assetNo" class="swal2-input" placeholder="Enter Property ID" style="margin:0;">
+                <input id="swal_assetNo" class="swal2-input" placeholder="Enter Asset No" style="margin:0;">
       </label>
 
       <label><span style="color: red;">Property Name: </span>
-                <input id="swal_propertyname" class="swal2-input" placeholder="Enter Property ID"  style="margin:0;">
+                <input id="swal_propertyname" class="swal2-input" placeholder="Enter Property Name"  style="margin:0;">
             </label>
+
+         <label><span style="color: red;">District: </span>
+        <select id="swal_district" class="form-control" required>
+            <option value="">Select</option>
+            <option value="Dhalai">Dhalai</option>
+            <option value="Gomati">Gomati</option>
+            <option value="Khowai">Khowai</option>
+            <option value="North Tripura">North Tripura</option>
+            <option value="Sepahijala">Sepahijala</option>
+            <option value="South Tripura">South Tripura</option>
+            <option value="Unakoti">Unakoti</option>
+            <option value="West Tripura">West Tripura</option>
+            
+            </select>
+                
+            </label>    
       
       <label><span style="color: red;">Description: </span>
-                <input id="swal_propertydesc" class="swal2-input" placeholder="Enter Property ID" style="margin:0;">
+                <input id="swal_propertydesc" class="swal2-input" placeholder="Enter Property Description (like measurement etc)" style="margin:0;">
       </label>
 
       <label><span style="color: red;">Property Type: </span>
-                <input id="swal_type" class="swal2-input" placeholder="Enter Property ID" style="margin:0;">
+        <select id="swal_type" class="form-control" required>
+            <option value="">Select</option>
+            <option value="EXCHANGE">EXCHANGE</option>
+            <option value="BTS">BTS</option>
+            <option value="OFFICE">OFFICE</option>
+            <option value="QUARTER">QUARTER</option>
+            <option value="OTHER">OTHER</option>
+            
+            </select>
+                
             </label>
       
         <label><span style="color: red;">Present Entitlement: </span>
-                <input id="swal_entitlement" class="swal2-input" placeholder="Enter Property ID" style="margin:0;">
+                
+ <select id="swal_entitlement" class="form-control" required>
+            <option value="">Select</option>
+            <option value="BSNL">BSNL</option>
+            <option value="DOT">DOT</option>
+            <option value="P & T">P & T</option>
+            <option value="State Govt.">State Govt.</option>
+            <option value="Private">Private</option>
+            <option value="No Document">No Document</option>
+            </select>
+
             </label>
            
         
@@ -763,4 +798,3 @@ document.getElementById("exportBtn").addEventListener("click", function () {
     </script>
 </body>
 </html>
-
