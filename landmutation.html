@@ -1,800 +1,278 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LAND MUTATION</title>
-    
-  
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
-     <script src="https://cdn.rawgit.com/rainabba/jquery-table2excel/1.1.0/dist/jquery.table2excel.min.js"></script>
-     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-</head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>LAND MUTATION</title>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
-    a{
-    text-decoration: none;
-    color: white;
-    cursor: pointer;
-}
-   #provdetaildiv{
-    position: fixed;
-    top: 200px; /* Distance from the top */
-      right: 100px; /* Distance from the right */
-      background-color: #FFDEC8;
-      border: 1px solid black;
-      z-index: 1000; /* Ensure it's above other elements */
-      overflow: auto;
-   }
-   #provdetailtable td  {
-    border: 1px solid black;
-   }
-   #provdetailtable th  {
-    border: 1px solid black;
-   }
-      /* Add this CSS to position the open-btn */
-      .main-content {
-      position: relative; /* Required for absolute positioning of child elements */
-      top: 25px;
-    }
-
- .bulb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: inline-block;
-            margin: 10px;
-            box-shadow: 0 0 10px currentColor;
-        }
-
-        .bulb.year {
-            background-color: #e5ff00;
-            box-shadow: 0 0 15px #e5ff00, 0 0 30px #e5ff00;
-        }
-        
-        .bulb.halfyear {
-            background-color: #ff0000;
-            box-shadow: 0 0 15px #ff0000, 0 0 30px #ff0000;
-        }
-    
+a{text-decoration:none;color:white;cursor:pointer}.main-content{position:relative;top:25px;padding:0 15px}.page-title{text-align:center;margin:10px 0 20px}.filter-container{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:15px 0;padding:15px;background:#f5f5f5;border:1px solid #ddd;border-radius:5px}.filter-box{width:180px}.filter-box.search-box{width:280px}.filter-box label{display:block;margin-bottom:5px;font-weight:bold}.filter-box select,.filter-box input{height:34px}.count-box{font-size:16px;margin:8px 0}.filter-summary{font-size:13px;color:#666;margin-top:5px}.table-container{width:100%;overflow-x:auto;max-height:calc(100vh - 270px);overflow-y:auto}#mutation-table{margin-top:15px;white-space:nowrap}#mutation-table th{background:#337ab7;color:white;text-align:center;vertical-align:middle;position:sticky;top:0;z-index:10}#mutation-table td{vertical-align:middle}.action-buttons{white-space:nowrap}@media(max-width:768px){.filter-box,.filter-box.search-box{width:100%}.page-title{font-size:25px}}
 </style>
-
+</head>
 <body>
-
-
 <div class="main-content">
-    <button class="btn btn-success" id="home-btn"> HOME</button>
-    <h1 style="display:flex; text-align: center; margin-left: 40%;"> LAND MUTATION</h1>
-    
-<div>Total Count: <b id="searchcount"></b> </div>
-<div style="display: inline-flex; justify-content: space-evenly;" >
-    
-    <div  style="margin-right: 700px; width: 400px;" >
-        <!-- <select id="yearFilter" class="form-control">
-    <option>Loading...</option>
-</select> -->
-<br>
-    <input type="text" id="searchInput" class="form-control"
-           placeholder="🔍 Search keywords" width="500px"
-           >
-   </div>
+<button class="btn btn-success" id="home-btn">HOME</button>
+<h1 class="page-title">LAND MUTATION</h1>
 
-<div>
-    
-    <button class="btn btn-primary" id="exportBtn" >
-    📊 Export to Excel
-</button> 
-<button class="btn btn-primary" id="addBtn" style="margin-left: 50px;">
-    ➕ Add New Entry
-</button>
+<div class="count-box">Total Count: <b id="searchcount">0</b></div>
+
+<div class="filter-container">
+<div class="filter-box search-box"><label>🔍 Search</label><input type="text" id="searchInput" class="form-control" placeholder="Search Property ID, Name, Asset No..."></div>
+<div class="filter-box"><label>Property Type</label><select id="typeFilter" class="form-control"><option value="">All Types</option></select></div>
+<div class="filter-box"><label>District</label><select id="districtFilter" class="form-control"><option value="">All Districts</option></select></div>
+<div class="filter-box"><label>Present Entitlement</label><select id="entitlementFilter" class="form-control"><option value="">All Entitlements</option></select></div>
+<div class="filter-box"><label>Present Status</label><select id="statusFilter" class="form-control"><option value="">All Status</option></select></div>
+<div><button class="btn btn-warning" id="resetFilterBtn">🔄 Reset Filters</button></div>
 </div>
 
+<div class="filter-summary" id="filterSummary"></div>
 
- </div>
-
-    <table class="table table-bordered" id="mutation-table" style="margin-top: 20px;">
-      <thead>
-        <tr>
-          <th style="text-align: center;">SL</th>
-          <th style="text-align: center;">Property ID</th>
-          <th style="text-align: center;">Asset No</th>
-          <th style="text-align: center;">Property Name</th>
-          <th style="text-align: center;">District</th>
-          <th style="text-align: center;">Total Area <br> (in Sq. Metre)</th>
-          <th style="text-align: center;">Type</th>
-          <th style="text-align: center;">Present Entitlement</th>
-          <th style="text-align: center;">Certificate</th>
-          <th style="text-align: center;">Mutation Date</th>
-          <th style="text-align: center;">Present Status</th>
-          <th style="text-align: center;">Office Responsible</th>
-          <th style="text-align: center;">Next Hearing Date</th>          
-          <th style="text-align: center;">Action</th>
-         
-        </tr>
-      </thead>
-      <tbody id="mutation-body">
-        <!-- Filled by JS -->
-      </tbody>
-    </table>
-
+<div style="margin:15px 0">
+<button class="btn btn-primary" id="exportBtn">📊 Export Filtered Data</button>
+<button class="btn btn-primary" id="addBtn" style="margin-left:20px">➕ Add New Entry</button>
 </div>
-   
-    
 
+<div class="table-container">
+<table class="table table-bordered table-striped" id="mutation-table">
+<thead><tr>
+<th>SL</th><th>Property ID</th><th>Asset No</th><th>Property Name</th><th>District</th><th>Total Area<br>(in Sq. Metre)</th><th>Type</th><th>Present Entitlement</th><th>Certificate</th><th>Mutation Date</th><th>Present Status</th><th>Office Responsible</th><th>Next Hearing Date</th><th>Action</th>
+</tr></thead>
+<tbody id="mutation-body"></tbody>
+</table>
+</div>
+</div>
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
-    <script src="https://cdn.rawgit.com/rainabba/jquery-table2excel/1.1.0/dist/jquery.table2excel.min.js"></script>
-    <script src="script.js"></script>
+<script type="module">
+import{getDatabase,ref,onValue,get,set,update}from"https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+import{app}from"./firebase-config.js";
 
-       
-    <script type="module">
+const db=getDatabase(app),dataRef=ref(db,"mutation");
+const appsScriptUrl="https://script.google.com/macros/s/AKfycbyChHcZ12eCuR2qbujMPA2M7mkH6eG3jWuyiElcFXkgbXTVMTj2tEWco4aBBocqtsnF/exec";
+let allmutation={};
 
- 
+document.getElementById("home-btn").onclick=()=>window.location.href="index.html";
 
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-    import { getDatabase, ref, child, onValue, get, set, update,remove } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
-   
-    import {app} from "./firebase-config.js";  
+onValue(dataRef,snapshot=>{allmutation=snapshot.val()||{};populateFilters();renderTable()});
 
-//const app = initializeApp(firebaseConfig);
+const searchInput=document.getElementById("searchInput"),typeFilter=document.getElementById("typeFilter"),districtFilter=document.getElementById("districtFilter"),entitlementFilter=document.getElementById("entitlementFilter"),statusFilter=document.getElementById("statusFilter");
 
-const db = getDatabase(app);
-
-function getFirebaseServerDateTime() {
-  return new Promise((resolve, reject) => {
-    const offsetRef = ref(db, ".info/serverTimeOffset");
-    onValue(offsetRef, (snapshot) => {
-      const offset = snapshot.val();
-      if (offset !== null) {
-        const estimatedServerTime = new Date(Date.now() + offset);
-        const year = estimatedServerTime.getFullYear();
-        const month = String(estimatedServerTime.getMonth() + 1).padStart(2, '0');
-        const day = String(estimatedServerTime.getDate()).padStart(2, '0');
-        const date = `${day}-${month}-${year}`;
-        const time = estimatedServerTime.toTimeString().split(' ')[0];
-        resolve({date});
-      } else {
-        reject("Could not get server time offset.");
-      }
-    }, { onlyOnce: true });
-  });
+function populateFilters(){
+    const types=new Set(),districts=new Set(),entitlements=new Set(),statuses=new Set();
+    Object.values(allmutation).forEach(d=>{
+        if(d.type)types.add(String(d.type).trim());
+        if(d.district)districts.add(String(d.district).trim());
+        if(d.presentEntitlement)entitlements.add(String(d.presentEntitlement).trim());
+        if(d.presentStatus)statuses.add(String(d.presentStatus).trim());
+    });
+    populateSelect(typeFilter,[...types].sort(),"All Types");
+    populateSelect(districtFilter,[...districts].sort(),"All Districts");
+    populateSelect(entitlementFilter,[...entitlements].sort(),"All Entitlements");
+    populateSelect(statusFilter,[...statuses].sort(),"All Status");
 }
 
-const btnAddEntry = document.getElementById('addBtn');
+function populateSelect(select,values,firstText){
+    const old=select.value;select.innerHTML=`<option value="">${firstText}</option>`;
+    values.forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;select.appendChild(o)});
+    if(values.includes(old))select.value=old;
+}
 
-const dataRef = ref(db, 'mutation');
+searchInput.addEventListener("input",renderTable);
+typeFilter.addEventListener("change",renderTable);
+districtFilter.addEventListener("change",renderTable);
+entitlementFilter.addEventListener("change",renderTable);
+statusFilter.addEventListener("change",renderTable);
 
+document.getElementById("resetFilterBtn").onclick=()=>{
+    searchInput.value="";typeFilter.value="";districtFilter.value="";entitlementFilter.value="";statusFilter.value="";renderTable();
+};
 
-let allmutation = {};
+function parseDMY(s){
+    if(!s)return null;
+    const p=String(s).split("-");
+    if(p.length!==3)return null;
+    const d=Number(p[0]),m=Number(p[1]),y=Number(p[2]);
+    return d&&m&&y?new Date(y,m-1,d):null;
+}
 
-onValue(dataRef, (snapshot) => {
-    allmutation = snapshot.val() || {};
+function escapeHTML(v){return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;")}
+function escapeAttr(v){return String(v??"").replace(/"/g,"&quot;")}
 
-   
-     renderTable();
-});
+function renderTable(){
+    const tbody=document.getElementById("mutation-body");tbody.innerHTML="";
+    const search=searchInput.value.trim().toLowerCase(),type=typeFilter.value.toLowerCase(),district=districtFilter.value.toLowerCase(),entitlement=entitlementFilter.value.toLowerCase(),status=statusFilter.value.toLowerCase();
+    let filteredData=[];
 
+    Object.entries(allmutation).forEach(([key,d])=>{
+        const x={...d,key};
+        const rowText=Object.values(x).join(" ").toLowerCase();
+        if(search&&!rowText.includes(search))return;
+        if(type&&String(x.type||"").trim().toLowerCase()!==type)return;
+        if(district&&String(x.district||"").trim().toLowerCase()!==district)return;
+        if(entitlement&&String(x.presentEntitlement||"").trim().toLowerCase()!==entitlement)return;
+        if(status&&String(x.presentStatus||"").trim().toLowerCase()!==status)return;
+        filteredData.push(x);
+    });
 
+    filteredData.sort((a,b)=>{
+        const da=parseDMY(a.nextHearingDate||a.nextHearingdate),db=parseDMY(b.nextHearingDate||b.nextHearingdate);
+        if(!da&&!db)return 0;if(!da)return 1;if(!db)return-1;return da-db;
+    });
 
-
-
-/* ============================= */
-/* ===== RENDER TABLE ========= */
-/* ============================= */
-async function renderTable() {
-
-    const { date } = await getFirebaseServerDateTime();
-
-    const tbody = document.getElementById("mutation-body");
-   
-    const searchText = document.getElementById("searchInput").value.toLowerCase();
-    let searchcount = document.getElementById('searchcount');
-
-    tbody.innerHTML = "";
-
-    let filteredData = [];
-    let alertList = [];
-
-    for (let key in allmutation) {
-
-        const mutationdata = allmutation[key];
-        mutationdata.key = key;
-
-                 
-        /* SEARCH FILTER */
-        const rowText = Object.values(mutationdata).join(" ").toLowerCase();
-        if (!rowText.includes(searchText)) continue;
-
-        filteredData.push(mutationdata);
-
-
-    }
-
-
-   
-
-    /* ============================= */
-    /* ===== CREATE ROWS ========== */
-    /* ============================= */
-    filteredData.forEach((mutationdata,index) => {
-
-        
-
-        function parseDMY(dateStr) {
-        if (!dateStr) return null;
-        const parts = dateStr.split('-');
-        if (parts.length !== 3) return null;
-        const [day, month, year] = parts.map(Number);
-        return new Date(year, month - 1, day);
-        }
-
-        
-        const nextHearingDate = parseDMY(mutationdata.nextHearingDate);
-        const currentDate = parseDMY(date);
-
-       
-        let nextHearingDays = '';
-       
-        if (nextHearingDate && currentDate) {
-        const diffTime2 = nextrevDate - currentDate;
-        nextHearingDays = Math.floor(diffTime2 / (1000 * 3600 * 24));
-        }
-
-        if (
-           
-            (nextHearingDays !== '' && nextHearingDays <= 15)
-        ) {
-            alertList.push({
-                   propertyID: mutationdata.propertyID || "",
-                   propertyName: mutationdata.location || "",
-                // days: days,
-                // revdays: revdays
-                    vendorcode: mutationdata.vendorcode || "",
-                    contractcode: mutationdata.contractcode || "",
-                    location: mutationdata.location || "",
-                    agreeenddate: mutationdata.agreeenddate || "",
-                    nextrevisiondate: mutationdata.nextrevisiondate || "",
-                    days: days,
-                    revdays: revdays
-            });
-        }
-
-
-     
-        const row = document.createElement("tr");
-
-
-
-        row.innerHTML = `
-            <td>${index+1}</td>
-            <td style="text-align: center;">${mutationdata.propertyID || ''}</td>
-            <td style="text-align: center;">${mutationdata.assetno || ''}</td>
-            <td style="text-align: center;">${mutationdata.propertyname || ''}</td>
-            <td style="text-align: center;">${mutationdata.district || ''}</td>
-            <td style="text-align: center;">${mutationdata.propertyDesc || ''}</td>
-            <td>${mutationdata.type || ''}</td>
-            <td>${mutationdata.presentEntitlement || ''}</td>
-            <td style="text-align: center;">
-               ${
-        mutationdata.mutationDocUrl && mutationdata.mutationDocUrl.trim()
-        ? `<a href="${mutationdata.mutationDocUrl}" target="_blank" class="btn btn-primary btn-xs">
-                Click Here
-           </a>`
-        : `<span style="color:#999;"> PDF Not Available</span>`
-    }  
-              
-            </td>
-            <td style="text-align: center;">${mutationdata.mutationDate || ''}</td>
-
-            <td style="text-align: center;">${mutationdata.presentStatus || ''}</td>
-            <td style="text-align: center;">${mutationdata.officeResponsible || ''}</td>
-            
-            <td style="text-align: center;">${mutationdata.nextHearingDate || ''}</td>
-           
-
-            <td style="width:130px;">
-                <button class="btn btn-info btn-xs edit-btn">Edit</button>
-                <button class="btn btn-danger btn-xs delete-btn">Delete</button>
-            </td>
-            
-           
-        `;
-        row.querySelector(".edit-btn").addEventListener("click", () => editMutation(mutationdata));
-        row.querySelector(".delete-btn").addEventListener("click", () => deleteMutation(mutationdata.key));
+    filteredData.forEach((d,i)=>{
+        const row=document.createElement("tr"),pdf=d.mutationDocUrl&&String(d.mutationDocUrl).trim();
+        row.innerHTML=`
+<td style="text-align:center">${i+1}</td>
+<td style="text-align:center">${escapeHTML(d.propertyID)}</td>
+<td style="text-align:center">${escapeHTML(d.assetno)}</td>
+<td>${escapeHTML(d.propertyname)}</td>
+<td>${escapeHTML(d.district)}</td>
+<td style="text-align:center">${escapeHTML(d.propertyDesc||d.propertydesc)}</td>
+<td>${escapeHTML(d.type)}</td>
+<td>${escapeHTML(d.presentEntitlement)}</td>
+<td style="text-align:center">${pdf?`<a href="${escapeAttr(pdf)}" target="_blank" class="btn btn-primary btn-xs">Click Here</a>`:`<span style="color:#999">PDF Not Available</span>`}</td>
+<td style="text-align:center">${escapeHTML(d.mutationDate)}</td>
+<td style="text-align:center">${escapeHTML(d.presentStatus)}</td>
+<td>${escapeHTML(d.officeResponsible)}</td>
+<td style="text-align:center">${escapeHTML(d.nextHearingDate||d.nextHearingdate)}</td>
+<td class="action-buttons"><button class="btn btn-info btn-xs edit-btn">Edit</button> <button class="btn btn-danger btn-xs delete-btn">Delete</button></td>`;
+        row.querySelector(".edit-btn").onclick=()=>editMutation(d);
+        row.querySelector(".delete-btn").onclick=()=>deleteMutation(d.key);
         tbody.appendChild(row);
     });
-    searchcount.innerText = filteredData.length;
 
-    // Show popup only when page first opens
+    document.getElementById("searchcount").textContent=filteredData.length;
+    const f=[];if(type)f.push(`Type: ${type.toUpperCase()}`);if(district)f.push(`District: ${district}`);if(entitlement)f.push(`Entitlement: ${entitlement.toUpperCase()}`);if(status)f.push(`Status: ${status.toUpperCase()}`);if(search)f.push(`Search: "${searchInput.value.trim()}"`);
+    document.getElementById("filterSummary").textContent=f.length?`Active Filters → ${f.join(" | ")} | Records: ${filteredData.length}`:`Showing all records | Records: ${filteredData.length}`;
+}
 
-if (!window.popupShown && alertList.length > 0) {
+/* ======================= EDIT ======================= */
 
-    window.popupShown = true;
+window.editMutation=async function(d){
+    let hearing=d.nextHearingDate||d.nextHearingdate||"";
+    if(hearing){const p=hearing.split("-");if(p.length===3)hearing=`${p[2]}-${p[1]}-${p[0]}`}
 
-    // Sort by Agreement Days
-    alertList.sort((a, b) => a.days - b.days);
-
-    let html = `
-    <div style="margin-bottom:10px;text-align:right">
-        <button id="exportAlert"
-            class="btn btn-success btn-sm">
-            📊 Export to Excel
-        </button>
-    </div>
-
-    <div style="max-height:450px;overflow-y:auto;">
-    <table id="alertTable"
-           class="table table-bordered table-striped">
-
-        <thead style="position:sticky;top:0;background:#0d6efd;color:white;">
-            <tr>
-            <th style="text-align: center;">SL</th>
-            <th style="text-align: center;">Vendor Code</th>
-            <th style="text-align: center;">Contract Code</th>
-            <th style="text-align: center;">Location</th>
-            <th style="text-align: center;">Agreement <br> End Date</th>
-            <th style="text-align: center;">Agreement <br> Days Left</th>
-            <th style="text-align: center;">Next Revision <br> Date</th>
-            <th style="text-align: center;">Next Revision <br> Due Days</th>
-            </tr>
-        </thead>
-
-        <tbody>
-    `;
-
-    alertList.forEach((item,index)=>{
-
-        let rowColor="";
-        
-            if(item.days<=180 || ((item.revdays) && item.revdays<=90)){
-            rowColor="#ffd6d6";      // Red
-        }
-        else{
-            rowColor="#fff8cc";      // Yellow
-        }
-        
-
-        
-
-        html+=`
-        <tr style="background:${rowColor}">
-            <td>${index+1}</td>
-	    <td>${item.vendorcode}</td>
-            <td>${item.contractcode}</td>
-            <td>${item.location}</td>
-             <td>${item.agreeenddate}</td>
-            <td align="center">${item.days}</td>
-	    <td>${item.nextrevisiondate}</td>
-            <td align="center">${item.revdays}</td>
-        </tr>
-        `;
-    });
-
-    html+=`
-        </tbody>
-    </table>
-    </div>
-    `;
-
-    Swal.fire({
-
-        title:"Agreements / Revisions Requiring Attention",
-
-        width:1000,
-
-        html:html,
-
-        confirmButtonText:"Close",
-
+    const result=await Swal.fire({
+        title:"Edit Entry",width:550,
+        html:`
+<div style="text-align:left;font-size:13px;display:flex;flex-direction:column;gap:8px">
+<label>Property ID<input id="edit_propertyID" class="form-control" value="${escapeAttr(d.propertyID)}" disabled></label>
+<label>Asset No<input id="edit_assetno" class="form-control" value="${escapeAttr(d.assetno)}"></label>
+<label>Property Name<input id="edit_propertyname" class="form-control" value="${escapeAttr(d.propertyname)}"></label>
+<label>District<select id="edit_district" class="form-control">${districtOptions(d.district)}</select></label>
+<label>Description / Area<input id="edit_propertydesc" class="form-control" value="${escapeAttr(d.propertyDesc||d.propertydesc)}"></label>
+<label>Property Type<select id="edit_type" class="form-control">${typeOptions(d.type)}</select></label>
+<label>Present Entitlement<select id="edit_entitlement" class="form-control">${entitlementOptions(d.presentEntitlement)}</select></label>
+<label>Mutation PDF URL<div style="display:flex;gap:6px"><input id="edit_mutationDocUrl" class="form-control" value="${escapeAttr(d.mutationDocUrl)}" style="flex:1"><button type="button" class="btn btn-primary" id="uploadPdfBtnEdit">Upload</button></div></label>
+<label>Present Status<select id="edit_presentStatus" class="form-control">${statusOptions(d.presentStatus)}</select></label>
+<label>Office Responsible<input id="edit_officeResponsible" class="form-control" value="${escapeAttr(d.officeResponsible)}"></label>
+<label>Next Hearing Date<input id="edit_nextHearingDate" type="date" class="form-control" value="${hearing}"></label>
+</div>`,
+        showCancelButton:true,confirmButtonText:"Update",
         didOpen:()=>{
-
-            document.getElementById("exportAlert").onclick=function(){
-
-                const wb=XLSX.utils.book_new();
-
-                const ws=XLSX.utils.table_to_sheet(
-                    document.getElementById("alertTable")
-                );
-
-                XLSX.utils.book_append_sheet(
-                    wb,
-                    ws,
-                    "Agreement Alert"
-                );
-
-                XLSX.writeFile(
-                    wb,
-                    "Agreement_Revision_Alert.xlsx"
-                );
-            };
-
+            document.getElementById("uploadPdfBtnEdit").onclick=()=>window.open(appsScriptUrl,"uploadPopup","width=600,height=500");
+        },
+        preConfirm:async()=>{
+            const fmt=s=>{if(!s)return"";const p=s.split("-");return`${p[2]}-${p[1]}-${p[0]}`};
+            try{
+                await update(ref(db,`mutation/${d.key}`),{
+                    propertyID:d.propertyID||"",
+                    assetno:document.getElementById("edit_assetno").value.trim(),
+                    propertyname:document.getElementById("edit_propertyname").value.trim(),
+                    district:document.getElementById("edit_district").value,
+                    propertyDesc:document.getElementById("edit_propertydesc").value.trim(),
+                    type:document.getElementById("edit_type").value,
+                    presentEntitlement:document.getElementById("edit_entitlement").value,
+                    mutationDocUrl:document.getElementById("edit_mutationDocUrl").value.trim(),
+                    presentStatus:document.getElementById("edit_presentStatus").value,
+                    officeResponsible:document.getElementById("edit_officeResponsible").value.trim(),
+                    nextHearingDate:fmt(document.getElementById("edit_nextHearingDate").value)
+                });return true;
+            }catch(e){Swal.showValidationMessage(e.message);return false}
         }
-
     });
-
-}
-
-
-
-}
-
-
-
-
-window.editMutation = function (mutationdata) {
-    console.log(mutationdata);
-    console.log("Edit clicked", mutationdata.key);
-
-    let hearingdate = mutationdata.nextHearingDate || "";
-
-if (hearingdate) {
-    const parts = hearingdate.split("-");
-    hearingdate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-}
-
-      const appsScriptUrl = "https://script.google.com/macros/s/AKfycbyChHcZ12eCuR2qbujMPA2M7mkH6eG3jWuyiElcFXkgbXTVMTj2tEWco4aBBocqtsnF/exec";
-
-  Swal.fire({
-    title: 'Edit Entry',
-    width: 500,
-    html: `
-    <div style="text-align: left; font-size: 12px; width: 100%; display: flex; flex-direction: column; gap: 0;">
-
-        <label><span style="color: red;">Property ID: </span>
-                <input id="swal_propertyname" class="swal2-input" value="${mutationdata.propertyID}" style="margin:0;" disabled>
-            </label>
-      
-      <label><span style="color: red;">Asset No: </span>
-                <input id="swal_propertydesc" class="swal2-input" value="${mutationdata.assetno}" style="margin:0;">
-      </label>
-
-      <label><span style="color: red;">Property Name: </span>
-                <input id="swal_propertyname" class="swal2-input" value="${mutationdata.propertyname}"  style="margin:0;">
-            </label>
-
-    <label><span style="color: red;">District: </span>
-                <input id="swal_district" class="swal2-input" value="${mutationdata.district}"  style="margin:0;">
-            </label>
-      
-      <label><span style="color: red;">Description: </span>
-                <input id="swal_propertydesc" class="swal2-input" value="${mutationdata.propertyDesc}" style="margin:0;">
-      </label>
-
-      <label><span style="color: red;">Property Type: </span>
-                <input id="swal_type" class="swal2-input" value="${mutationdata.type || ''}" style="margin:0;">
-            </label>
-      
-        <label><span style="color: red;">Present Entitlement: </span>
-                <input id="swal_entitlement" class="swal2-input" value="${mutationdata.presentEntitlement || ''}" style="margin:0;">
-            </label>
-           
-        
-        <label><span style="color: red;">Mutation PDF URL: </span>
-          <div style="display:flex; gap:6px; align-items:center;">
-            <input id="swal_mutationDocUrl" class="swal2-input" value="${mutationdata.mutationDocUrl || ''}" style="margin:0; flex:1;">
-            <button type="button" class="btn btn-sm btn-primary" id="uploadPdfBtn1">Upload</button>
-          </div>
-        </label>
-
-         <label><span style="color: red;">Present Status: </span>
-                <input id="swal_presentStatus" class="swal2-input" value="${mutationdata.presentStatus || ''}" style="margin:0;">
-            </label>
-          <label><span style="color: red;">Office Responsible: </span>
-                <input id="swal_officeResponsible" class="swal2-input" value="${mutationdata.officeResponsible || ''}" style="margin:0;">
-            </label>   
-
-        <label><span style="color: red;">Next Hearing Date: </span>
-                <input id="swal_nexthearingdate" type= "date" class="swal2-input" value="${hearingdate || ''}" style="margin:0;">
-        </label> 
-        
-      
-      </div>
-    
-    `,
-    showCancelButton: true,
-    confirmButtonText: 'Update',
-
-        didOpen: () => {
-      document.getElementById('uploadPdfBtn1').addEventListener('click', () => {
-        // Open as popup so window.opener is set in the upload page
-        window.open(appsScriptUrl, 'uploadPopup', 'width=600,height=500');
-      });
-
-      
-    },
-
-    preConfirm: async () => {
-       function formatDateDDMMYYYY(dateStr) {
-      if (!dateStr) return "";
-      const [year, month, day] = dateStr.split("-");
-      return `${day}-${month}-${year}`;
-      }
-
-      const key = mutationdata.key; // locked
-      const propertyname = document.getElementById('swal_propertyname').value.trim();
-      const propertydesc = document.getElementById('swal_propertydesc').value.trim();
-      const type = String(document.getElementById('swal_type').value.trim());
-      const presentEntitlement = String(document.getElementById('swal_presentEntitlement').value.trim());
-      const mutationDocUrl= String(document.getElementById('swal_mutationDocUrl').value.trim());
-      const presentStatus = document.getElementById('swal_presentStatus').value.trim();
-      const officeResponsible = document.getElementById('swal_officeResponsible').value.trim();
-      const nextHearingdate = formatDateDDMMYYYY(document.getElementById('swal_nextHearingDate').value.trim());
-      
-      
-       if (!key) {
-        Swal.showValidationMessage('Invalid record key');
-        return false;
-      }
-
-    //   if (!customer) {
-    //     Swal.showValidationMessage('Customer Name required');
-    //     return false;
-    //   }
-
-      try {
-     
-
-//console.log(JSON.stringify(data));
-        await update(ref(db, `mutation/${key}`), {
-           propertyname: propertyname,
-	       propertydesc: propertydesc,
-	       type: type,
-           presentEntitlement: presentEntitlement,
-           mutationDocUrl: mutationDocUrl,
-           presentStatus: presentStatus,
-           officeResponsible: officeResponsible,
-           nextHearingdate: nextHearingdate
-
-        });
-        console.log("Update finished");
-        return true;
-      } catch (err) {
-            console.error("ERROR:", err);
-            console.error("STACK:", err.stack);
-            Swal.showValidationMessage(err.message);
-      }
-    }
-  }).then((result) => {
-    if (result.isConfirmed) {
-      Swal.fire("Updated", "entry updated", "success");
-      //window.reload();
-      //loadStaffList();
-    }
-  });
+    if(result.isConfirmed)Swal.fire("Updated","Entry updated successfully","success");
 };
 
-window.deleteBts = async function (key) {
-  const confirm = await Swal.fire({
-    title: 'Delete?',
-    text: `Delete Entry ${key}?`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#d33'
-  });
+/* ======================= DROPDOWN OPTIONS ======================= */
 
-  if (!confirm.isConfirmed) return;
+function makeOptions(arr,selected){return arr.map(v=>`<option value="${escapeAttr(v)}" ${v===selected?"selected":""}>${escapeHTML(v)}</option>`).join("")}
+function districtOptions(s){return makeOptions(["Dhalai","Gomati","Khowai","North Tripura","Sepahijala","South Tripura","Unakoti","West Tripura"],s)}
+function typeOptions(s){return makeOptions(["EXCHANGE","BTS","OFFICE","QUARTER","OTHER"],s)}
+function entitlementOptions(s){return makeOptions(["BSNL","DOT","P & T","State Govt.","Private","No Document"],s)}
+function statusOptions(s){return makeOptions(["DONE","PENDING"],s)}
 
-  try {
-    await set(ref(db, `mutation/${key}`), null);
-    Swal.fire("Deleted", "Entry removed", "success");
-    //window.reload();
+/* ======================= DELETE ======================= */
 
-  } catch (err) {
-    Swal.fire("Error", err.message, "error");
-  }
+window.deleteMutation=async function(key){
+    const result=await Swal.fire({title:"Delete Entry?",text:`Delete Entry ${key}?`,icon:"warning",showCancelButton:true,confirmButtonColor:"#d33",confirmButtonText:"Delete"});
+    if(!result.isConfirmed)return;
+    try{await set(ref(db,`mutation/${key}`),null);Swal.fire("Deleted","Entry removed successfully","success")}
+    catch(e){Swal.fire("Error",e.message,"error")}
 };
 
-/* ============================= */
-/* ===== SEARCH + FILTER ===== */
-/* ============================= */
-document.getElementById("searchInput").addEventListener("keyup", function(){
-    renderTable();
-    
-});
+/* ======================= ADD NEW ENTRY ======================= */
 
+document.getElementById("addBtn").onclick=async()=>{
+    const result=await Swal.fire({
+        title:"Add New Entry",width:550,
+        html:`
+<div style="text-align:left;font-size:13px;display:flex;flex-direction:column;gap:8px">
+<label>Property ID<input id="add_propertyID" class="form-control" placeholder="Enter Property ID"></label>
+<label>Asset No<input id="add_assetno" class="form-control" placeholder="Enter Asset No"></label>
+<label>Property Name<input id="add_propertyname" class="form-control" placeholder="Enter Property Name"></label>
+<label>District<select id="add_district" class="form-control"><option value="">Select District</option><option>Dhalai</option><option>Gomati</option><option>Khowai</option><option>North Tripura</option><option>Sepahijala</option><option>South Tripura</option><option>Unakoti</option><option>West Tripura</option></select></label>
+<label>Description / Area<input id="add_propertydesc" class="form-control" placeholder="Enter measurement / description"></label>
+<label>Property Type<select id="add_type" class="form-control"><option value="">Select Type</option><option>EXCHANGE</option><option>BTS</option><option>OFFICE</option><option>QUARTER</option><option>OTHER</option></select></label>
+<label>Present Entitlement<select id="add_entitlement" class="form-control"><option value="">Select Entitlement</option><option>BSNL</option><option>DOT</option><option>P & T</option><option>State Govt.</option><option>Private</option><option>No Document</option></select></label>
+<label>Mutation PDF URL<div style="display:flex;gap:6px"><input id="add_mutationDocUrl" class="form-control" placeholder="PDF URL" style="flex:1"><button type="button" class="btn btn-primary" id="uploadPdfBtnAdd">Upload</button></div></label>
+<label>Present Status<select id="add_presentStatus" class="form-control"><option value="">Select Status</option><option>DONE</option><option>PENDING</option></select></label>
+<label>Office Responsible<input id="add_officeResponsible" class="form-control" placeholder="Enter Office Responsible"></label>
+<label>Next Hearing Date<input id="add_nextHearingDate" type="date" class="form-control"></label>
+</div>`,
+        showCancelButton:true,confirmButtonText:"ADD",
+        didOpen:()=>{
+            document.getElementById("uploadPdfBtnAdd").onclick=()=>window.open(appsScriptUrl,"uploadPopup","width=600,height=500");
+        },
+        preConfirm:async()=>{
+            const key=document.getElementById("add_propertyID").value.trim(),propertyname=document.getElementById("add_propertyname").value.trim();
+            if(!key){Swal.showValidationMessage("Property ID is required");return false}
+            if(!propertyname){Swal.showValidationMessage("Property Name is required");return false}
+            const snap=await get(ref(db,`mutation/${key}`));
+            if(snap.exists()){Swal.showValidationMessage("Property ID already exists");return false}
+            const fmt=s=>{if(!s)return"";const p=s.split("-");return`${p[2]}-${p[1]}-${p[0]}`};
+            try{
+                await set(ref(db,`mutation/${key}`),{
+                    propertyID:key,
+                    assetno:document.getElementById("add_assetno").value.trim(),
+                    propertyname,
+                    district:document.getElementById("add_district").value,
+                    propertyDesc:document.getElementById("add_propertydesc").value.trim(),
+                    type:document.getElementById("add_type").value,
+                    presentEntitlement:document.getElementById("add_entitlement").value,
+                    mutationDocUrl:document.getElementById("add_mutationDocUrl").value.trim(),
+                    presentStatus:document.getElementById("add_presentStatus").value,
+                    officeResponsible:document.getElementById("add_officeResponsible").value.trim(),
+                    nextHearingDate:fmt(document.getElementById("add_nextHearingDate").value)
+                });return true;
+            }catch(e){Swal.showValidationMessage(e.message);return false}
+        }
+    });
+    if(result.isConfirmed)Swal.fire("Added","Entry added successfully","success");
+};
 
-/*============Add New Entry=================== */
+/* ======================= EXPORT FILTERED DATA ======================= */
 
-btnAddEntry.addEventListener("click", async () => {
+document.getElementById("exportBtn").onclick=()=>{
+    const table=document.getElementById("mutation-table"),wb=XLSX.utils.book_new(),ws=XLSX.utils.table_to_sheet(table);
+    XLSX.utils.book_append_sheet(wb,ws,"Mutation_Details");
+    XLSX.writeFile(wb,"MutationDetails_Filtered.xlsx");
+};
 
-    const appsScriptUrl = "https://script.google.com/macros/s/AKfycbyChHcZ12eCuR2qbujMPA2M7mkH6eG3jWuyiElcFXkgbXTVMTj2tEWco4aBBocqtsnF/exec";
-    const result = await Swal.fire({
-        title: "Add New Entry",
-        width: "480px",
-        html: `
-        <div style="text-align: left; font-size: 12px; width: 100%; display: flex; flex-direction: column; gap: 0;">
-             <label><span style="color: red;">Property Name: </span>
-                <input id="swal_propertyID" class="swal2-input" placeholder="Enter Property ID" style="margin:0;">
-            </label>
-      
-      <label><span style="color: red;">Description: </span>
-                <input id="swal_assetNo" class="swal2-input" placeholder="Enter Asset No" style="margin:0;">
-      </label>
-
-      <label><span style="color: red;">Property Name: </span>
-                <input id="swal_propertyname" class="swal2-input" placeholder="Enter Property Name"  style="margin:0;">
-            </label>
-
-         <label><span style="color: red;">District: </span>
-        <select id="swal_district" class="form-control" required>
-            <option value="">Select</option>
-            <option value="Dhalai">Dhalai</option>
-            <option value="Gomati">Gomati</option>
-            <option value="Khowai">Khowai</option>
-            <option value="North Tripura">North Tripura</option>
-            <option value="Sepahijala">Sepahijala</option>
-            <option value="South Tripura">South Tripura</option>
-            <option value="Unakoti">Unakoti</option>
-            <option value="West Tripura">West Tripura</option>
-            
-            </select>
-                
-            </label>    
-      
-      <label><span style="color: red;">Description: </span>
-                <input id="swal_propertydesc" class="swal2-input" placeholder="Enter Property Description (like measurement etc)" style="margin:0;">
-      </label>
-
-      <label><span style="color: red;">Property Type: </span>
-        <select id="swal_type" class="form-control" required>
-            <option value="">Select</option>
-            <option value="EXCHANGE">EXCHANGE</option>
-            <option value="BTS">BTS</option>
-            <option value="OFFICE">OFFICE</option>
-            <option value="QUARTER">QUARTER</option>
-            <option value="OTHER">OTHER</option>
-            
-            </select>
-                
-            </label>
-      
-        <label><span style="color: red;">Present Entitlement: </span>
-                
- <select id="swal_entitlement" class="form-control" required>
-            <option value="">Select</option>
-            <option value="BSNL">BSNL</option>
-            <option value="DOT">DOT</option>
-            <option value="P & T">P & T</option>
-            <option value="State Govt.">State Govt.</option>
-            <option value="Private">Private</option>
-            <option value="No Document">No Document</option>
-            </select>
-
-            </label>
-           
-        
-        <label><span style="color: red;">Mutation PDF URL: </span>
-          <div style="display:flex; gap:6px; align-items:center;">
-            <input id="swal_mutationDocUrl" class="swal2-input" placeholder="Enter Property ID" style="margin:0; flex:1;">
-            <button type="button" class="btn btn-sm btn-primary" id="uploadPdfBtn1">Upload</button>
-          </div>
-        </label>
-
-         <label><span style="color: red;">Present Status: </span>
-                <input id="swal_presentStatus" class="swal2-input" placeholder="Enter Property ID" style="margin:0;">
-            </label>
-          <label><span style="color: red;">Office Responsible: </span>
-                <input id="swal_officeResponsible" class="swal2-input" placeholder="Enter Property ID" style="margin:0;">
-            </label>   
-
-        <label><span style="color: red;">Next Hearing Date: </span>
-                <input id="swal_nexthearingdate" type= "date" class="swal2-input" placeholder="Enter Property ID" style="margin:0;">
-        </label> 
-        
-      
-      </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: "ADD",
-
-          didOpen: () => {
-      document.getElementById('uploadPdfBtn1').addEventListener('click', () => {
-        // Open as popup so window.opener is set in the upload page
-        window.open(appsScriptUrl, 'uploadPopup', 'width=600,height=500');
-      });
-
-    
-    },
-	
-	preConfirm: async () => {
-
-    function formatDateDDMMYYYY(dateStr) {
-  if (!dateStr) return "";
-  const [year, month, day] = dateStr.split("-");
-  return `${day}-${month}-${year}`;
-  }
-      
-      const key = String(document.getElementById('propertyID').value.trim());
-        
-      const propertyname = document.getElementById('swal_propertyname').value.trim();
-      const propertydesc = document.getElementById('swal_propertydesc').value.trim();
-      const type = String(document.getElementById('swal_type').value.trim());
-      const presentEntitlement = String(document.getElementById('swal_presentEntitlement').value.trim());
-      const mutationDocUrl= String(document.getElementById('swal_mutationDocUrl').value.trim());
-      const presentStatus = document.getElementById('swal_presentStatus').value.trim();
-      const officeResponsible = document.getElementById('swal_officeResponsible').value.trim();
-      const nextHearingdate = formatDateDDMMYYYY(document.getElementById('swal_nextHearingDate').value.trim());
-  
-      
-       if (!key) {
-        Swal.showValidationMessage('Please Enter Contract Code');
-        return false;
-      }
-
-   
-
-      try {
-
-        const dbRef = ref(db, "mutation/" + key);
-            const snapshot = await get(dbRef);
-
-            if (snapshot.exists()) {
-                Swal.fire("Entry already exists!");
-                return;
-            }
-     
-
-    //console.log(JSON.stringify(data));
-        await set(ref(db, `mutation/${key}`), {
-           propertyname: propertyname,
-	       propertydesc: propertydesc,
-	       type: type,
-           presentEntitlement: presentEntitlement,
-           mutationDocUrl: mutationDocUrl,
-           presentStatus: presentStatus,
-           officeResponsible: officeResponsible,
-           nextHearingdate: nextHearingdate
-
-        });
-        console.log("adding finished");
-        return true;
-      } catch (err) {
-            console.error("ERROR:", err);
-            console.error("STACK:", err.stack);
-            Swal.showValidationMessage(err.message);
-      }
-    }
-  }).then((result) => {
-    if (result.isConfirmed) {
-      Swal.fire("Added", "entry added", "success");
-      //window.reload();
-      //loadStaffList();
-    }
-  });
-
-});
-
-// Upload PDF //
-
-
-/* ============================= */
-/* ===== EXPORT TO EXCEL ===== */
-/* ============================= */
-document.getElementById("exportBtn").addEventListener("click", function () {
-
-   
-     const wb=XLSX.utils.book_new();
-
-                const ws=XLSX.utils.table_to_sheet(
-                    document.getElementById("mutation-table")
-                );
-
-                XLSX.utils.book_append_sheet(
-                    wb,
-                    ws,
-                    "Mutation_Details"
-                );
-
-                XLSX.writeFile(
-                    wb,
-                    "MutationDetails.xlsx"
-                );
-
-});
-
-    </script>
+</script>
 </body>
 </html>
+
