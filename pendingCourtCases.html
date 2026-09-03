@@ -232,9 +232,9 @@
                 Refresh
             </button>
 
-            <button class="btn btn-hearing-alert" onclick="show30DayAlert()">
+            <button class="btn btn-hearing-alert" onclick="show15DayAlert()">
                 <span class="glyphicon glyphicon-calendar"></span>
-                Next 30 Days
+                Next 15 Days
             </button>
 
         </div>
@@ -301,6 +301,7 @@
 <script type="module">
 
     const userpriv = sessionStorage.getItem("userpriv");
+    console.log(userpriv);
     const actionHeader = document.getElementById('thaction');
     if (userpriv === 'SAU' || userpriv === 'LGL') {
         actionHeader.style.display = 'table-cell';
@@ -391,7 +392,7 @@
             // Show popup on first load after data is ready
             if (isFirstLoad) {
                 isFirstLoad = false;
-                setTimeout(() => show30DayAlert(), 400);
+                setTimeout(() => show15DayAlert(), 400);
             }
         }, {
             onlyOnce: false
@@ -590,16 +591,16 @@
        SHOW 30 DAY ALERT (POPUP ON LOAD & MANUAL)
        ============================================================ */
 
-    window.show30DayAlert = function () {
+    window.show15DayAlert = function () {
         const cases = Object.values(allCases);
         const today = todayWithoutTime();
-        const future30 = new Date(today);
-        future30.setDate(today.getDate() + 30);
+        const future15 = new Date(today);
+        future15.setDate(today.getDate() + 15);
 
         const upcoming = cases.filter(caseData => {
             const nextDate = parseDMY(caseData.nextDate);
             if (!nextDate) return false;
-            return nextDate >= today && nextDate <= future30;
+            return nextDate >= today && nextDate <= future15;
         });
 
         // Sort by next date
@@ -613,7 +614,7 @@
             Swal.fire({
                 icon: 'info',
                 title: 'No Upcoming Hearings',
-                text: `No cases with next date within the next 30 days (today – ${formatDate(future30)}).`,
+                text: `No cases with next date within the next 15 days (today – ${formatDate(future30)}).`,
                 timer: 3000,
                 timerProgressBar: true
             });
@@ -635,8 +636,8 @@
 
         const html = `
             <div style="max-height:450px; overflow-y:auto; text-align:left; font-size:14px;">
-                <p><strong>${upcoming.length} case(s)</strong> with next date within 30 days 
-                <span style="color:#666; font-size:13px;">(${formatDate(today)} – ${formatDate(future30)})</span></p>
+                <p><strong>${upcoming.length} case(s)</strong> with next date within 15 days 
+                <span style="color:#666; font-size:13px;">(${formatDate(today)} – ${formatDate(future15)})</span></p>
                 <table class="table table-bordered table-striped" style="font-size:13px; margin:8px 0;">
                     <thead>
                         <tr>
@@ -655,7 +656,7 @@
         `;
 
         Swal.fire({
-            title: '📅 Upcoming Hearings (≤ 30 days)',
+            title: '📅 Upcoming Hearings (≤ 15 days)',
             html: html,
             width: 850,
             confirmButtonText: 'OK',
