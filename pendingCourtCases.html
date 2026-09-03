@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -168,6 +167,17 @@
             padding: 7px 10px;
         }
 
+        .btn-hearing-alert {
+            background: #ff9800;
+            border-color: #e68900;
+            color: #fff;
+        }
+        .btn-hearing-alert:hover {
+            background: #e68900;
+            border-color: #cc7a00;
+            color: #fff;
+        }
+
         @media (max-width: 768px) {
             body {
                 padding: 8px;
@@ -222,6 +232,11 @@
                 Refresh
             </button>
 
+            <button class="btn btn-hearing-alert" onclick="show30DayAlert()">
+                <span class="glyphicon glyphicon-calendar"></span>
+                Next 30 Days
+            </button>
+
         </div>
 
         <div class="summary-box">
@@ -259,18 +274,17 @@
                             <span class="sort-indicator">▲</span>
                         </th>
                         <th>Present Status</th>
-                        <th>Date Hearing</th>
+                        <!-- <th>Date Hearing</th> -->
                         <th>Acts</th>
                         <th>CNR</th>
                         <th>Case Details</th>
-                        <!-- <th>Actions</th> -->
                         <th id="thaction" class="action-col" style="display: none;">Action</th>
                     </tr>
                 </thead>
 
                 <tbody id="caseTableBody">
                     <tr>
-                        <td colspan="16" class="loading">
+                        <td colspan="17" class="loading">
                             Loading cases...
                         </td>
                     </tr>
@@ -287,12 +301,12 @@
 <script type="module">
 
     const userpriv = sessionStorage.getItem("userpriv");
-const actionHeader = document.getElementById('thaction');
-if (userpriv === 'SAU' || userpriv === 'LGL') {
-  actionHeader.style.display = 'table-cell';
-} else {
-  actionHeader.style.display = 'none';
-}
+    const actionHeader = document.getElementById('thaction');
+    if (userpriv === 'SAU' || userpriv === 'LGL') {
+        actionHeader.style.display = 'table-cell';
+    } else {
+        actionHeader.style.display = 'none';
+    }
 
     import { initializeApp }
         from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
@@ -305,18 +319,13 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
         update,
         remove
     } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
-    import{app}from"./firebase-config.js";
+    import { app } from "./firebase-config.js";
 
-
-
-
-    // const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-
     const casesRef = ref(db, "pendingcases");
 
     let allCases = {};
-
+    let isFirstLoad = true;
 
     /* ============================================================
        DATE FUNCTIONS
@@ -324,21 +333,14 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
        ============================================================ */
 
     function parseDMY(dateStr) {
-
         if (!dateStr) return null;
-
         const parts = String(dateStr).trim().split("-");
-
         if (parts.length !== 3) return null;
-
         const day = Number(parts[0]);
         const month = Number(parts[1]);
         const year = Number(parts[2]);
-
         if (!day || !month || !year) return null;
-
         const date = new Date(year, month - 1, day);
-
         if (
             date.getFullYear() !== year ||
             date.getMonth() !== month - 1 ||
@@ -346,33 +348,23 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
         ) {
             return null;
         }
-
         return date;
     }
 
-
     function formatDate(date) {
-
         if (!date) return "";
-
         const day = String(date.getDate()).padStart(2, "0");
         const month = String(date.getMonth() + 1).padStart(2, "0");
         const year = date.getFullYear();
-
         return `${day}-${month}-${year}`;
     }
 
-
     function isValidDMY(dateStr) {
-
         return parseDMY(dateStr) !== null;
     }
 
-
     function todayWithoutTime() {
-
         const d = new Date();
-
         return new Date(
             d.getFullYear(),
             d.getMonth(),
@@ -380,74 +372,63 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
         );
     }
 
-
     /* ============================================================
        LOAD CASES
        ============================================================ */
 
     window.loadCases = function () {
-
         document.getElementById("caseTableBody").innerHTML =
             `<tr>
-                <td colspan="16" class="loading">
+                <td colspan="17" class="loading">
                     Loading cases...
                 </td>
             </tr>`;
 
         onValue(casesRef, (snapshot) => {
-
             allCases = snapshot.val() || {};
-
             renderTable();
-
+            
+            // Show popup on first load after data is ready
+            if (isFirstLoad) {
+                isFirstLoad = false;
+                setTimeout(() => show30DayAlert(), 400);
+            }
         }, {
             onlyOnce: false
         });
     };
-
 
     /* ============================================================
        SORT CASES BY NEXT DATE
        ============================================================ */
 
     function getSortedCases() {
-
         const cases = Object.entries(allCases).map(([key, data]) => {
-
             return {
                 key: key,
                 ...data
             };
-
         });
 
         cases.sort((a, b) => {
-
             const dateA = parseDMY(a.nextDate);
             const dateB = parseDMY(b.nextDate);
-
             if (!dateA && !dateB) return 0;
             if (!dateA) return 1;
             if (!dateB) return -1;
-
             return dateA - dateB;
-
         });
 
         return cases;
     }
-
 
     /* ============================================================
        SEARCH
        ============================================================ */
 
     function matchesSearch(caseData, searchText) {
-
         if (!searchText) return true;
-
         const searchableFields = [
-
             caseData.limbsID,
             caseData.caseNo,
             caseData.registrationDate,
@@ -466,73 +447,54 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
             caseData.erpUniqueCaseKey,
             caseData.cnr,
             caseData.detailsDeposits
-
         ];
-
         return searchableFields.some(value =>
-
             String(value || "")
                 .toLowerCase()
                 .includes(searchText)
-
         );
     }
-
 
     /* ============================================================
        RENDER TABLE
        ============================================================ */
 
     window.renderTable = function () {
-
         const tbody = document.getElementById("caseTableBody");
-
         const searchText =
             document.getElementById("searchBox")
                 .value
                 .trim()
                 .toLowerCase();
 
-
         const cases = getSortedCases().filter(c =>
             matchesSearch(c, searchText)
         );
 
-
         updateSummary();
 
-
         if (cases.length === 0) {
-
             tbody.innerHTML =
                 `<tr>
-                    <td colspan="16" class="no-data">
+                    <td colspan="17" class="no-data">
                         No cases found.
                     </td>
                 </tr>`;
-
             return;
         }
-
 
         let html = "";
 
         cases.forEach((caseData, index) => {
-
             const nextDate = parseDMY(caseData.nextDate);
-
             let dateClass = "";
-
             if (nextDate) {
-
                 const today = todayWithoutTime();
-
                 const difference =
                     Math.ceil(
                         (nextDate - today) /
                         (1000 * 60 * 60 * 24)
                     );
-
                 if (difference < 0) {
                     dateClass = "date-overdue";
                 }
@@ -541,70 +503,25 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                 }
             }
 
+            //<td>${escapeHTML(caseData.DateHearing)}</td>
 
             html += `
                 <tr>
-
-                    <td class="text-center">
-                        ${index + 1}
-                    </td>
-
-                    <td>
-                        ${escapeHTML(caseData.limbsID)}
-                    </td>
-
-                    <td>
-                        ${escapeHTML(caseData.caseNo)}
-                    </td>
-
-                    <td>
-                        ${escapeHTML(caseData.registrationDate)}
-                    </td>
-
-                    <td>
-                        ${escapeHTML(caseData.court)}
-                    </td>
-
-                    <td>
-                        ${escapeHTML(caseData.petitioner)}
-                    </td>
-
-                    <td>
-                        ${escapeHTML(caseData.respondent)}
-                    </td>
-
-                    <td>
-                        ${escapeHTML(caseData.advocate)}
-                    </td>
-
-                    <td class="text-right">
-                        ${escapeHTML(caseData.amountInvolved)}
-                    </td>
-
-                    <td>
-                        ${escapeHTML(caseData.previousDate)}
-                    </td>
-
-                    <td class="${dateClass}">
-                        ${escapeHTML(caseData.nextDate)}
-                    </td>
-
-                    <td class="status-cell">
-                        ${escapeHTML(caseData.presentStatus)}
-                    </td>
-
-                    <td>
-                        ${escapeHTML(caseData.DateHearing)}
-                    </td>
-
-                    <td>
-                        ${escapeHTML(caseData.acts)}
-                    </td>
-
-                    <td>
-                        ${escapeHTML(caseData.cnr)}
-                    </td>
-
+                    <td class="text-center">${index + 1}</td>
+                    <td>${escapeHTML(caseData.limbsID)}</td>
+                    <td>${escapeHTML(caseData.caseNo)}</td>
+                    <td>${escapeHTML(caseData.registrationDate)}</td>
+                    <td>${escapeHTML(caseData.court)}</td>
+                    <td>${escapeHTML(caseData.petitioner)}</td>
+                    <td>${escapeHTML(caseData.respondent)}</td>
+                    <td>${escapeHTML(caseData.advocate)}</td>
+                    <td class="text-right">${escapeHTML(caseData.amountInvolved)}</td>
+                    <td>${escapeHTML(caseData.previousDate)}</td>
+                    <td class="${dateClass}">${escapeHTML(caseData.nextDate)}</td>
+                    <td class="status-cell">${escapeHTML(caseData.presentStatus)}</td>
+                    
+                    <td>${escapeHTML(caseData.acts)}</td>
+                    <td>${escapeHTML(caseData.cnr)}</td>
                     <td>
                         <button
                             class="btn btn-info btn-xs btn-action"
@@ -613,7 +530,6 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                             VIEW
                         </button>
                     </td>
-
                     <td class="text-center action-col"
         style="display: ${ (userpriv === 'SAU' || userpriv === 'LGL') ? 'table-cell' : 'none' };">
 
@@ -632,176 +548,200 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                         </button>
 
                     </td>
-
                 </tr>
             `;
         });
 
-
         tbody.innerHTML = html;
     };
-
 
     /* ============================================================
        SUMMARY
        ============================================================ */
 
     function updateSummary() {
-
         const cases = Object.values(allCases);
-
         let overdue = 0;
         let near = 0;
-
         const today = todayWithoutTime();
 
         cases.forEach(caseData => {
-
             const nextDate = parseDMY(caseData.nextDate);
-
             if (!nextDate) return;
-
             const difference =
                 Math.ceil(
                     (nextDate - today) /
                     (1000 * 60 * 60 * 24)
                 );
-
             if (difference < 0) {
                 overdue++;
             }
             else if (difference <= 7) {
                 near++;
             }
-
         });
 
-
-        document.getElementById("totalCases").textContent =
-            cases.length;
-
-        document.getElementById("overdueCases").textContent =
-            overdue;
-
-        document.getElementById("nearCases").textContent =
-            near;
+        document.getElementById("totalCases").textContent = cases.length;
+        document.getElementById("overdueCases").textContent = overdue;
+        document.getElementById("nearCases").textContent = near;
     }
 
+    /* ============================================================
+       SHOW 30 DAY ALERT (POPUP ON LOAD & MANUAL)
+       ============================================================ */
+
+    window.show30DayAlert = function () {
+        const cases = Object.values(allCases);
+        const today = todayWithoutTime();
+        const future30 = new Date(today);
+        future30.setDate(today.getDate() + 30);
+
+        const upcoming = cases.filter(caseData => {
+            const nextDate = parseDMY(caseData.nextDate);
+            if (!nextDate) return false;
+            return nextDate >= today && nextDate <= future30;
+        });
+
+        // Sort by next date
+        upcoming.sort((a, b) => {
+            const da = parseDMY(a.nextDate);
+            const db = parseDMY(b.nextDate);
+            return da - db;
+        });
+
+        if (upcoming.length === 0) {
+            Swal.fire({
+                icon: 'info',
+                title: 'No Upcoming Hearings',
+                text: `No cases with next date within the next 30 days (today – ${formatDate(future30)}).`,
+                timer: 3000,
+                timerProgressBar: true
+            });
+            return;
+        }
+
+        // Build table rows
+        let rows = upcoming.map((d, idx) => `
+            <tr>
+                <td>${idx + 1}</td>
+                <td>${escapeHTML(d.limbsID)}</td>
+                <td>${escapeHTML(d.caseNo)}</td>
+                <td>${escapeHTML(d.court)}</td>
+                <td>${escapeHTML(d.petitioner)}</td>
+                <td>${escapeHTML(d.respondent)}</td>
+                <td><strong>${escapeHTML(d.nextDate)}</strong></td>
+            </tr>
+        `).join('');
+
+        const html = `
+            <div style="max-height:450px; overflow-y:auto; text-align:left; font-size:14px;">
+                <p><strong>${upcoming.length} case(s)</strong> with next date within 30 days 
+                <span style="color:#666; font-size:13px;">(${formatDate(today)} – ${formatDate(future30)})</span></p>
+                <table class="table table-bordered table-striped" style="font-size:13px; margin:8px 0;">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>LIMBS ID</th>
+                            <th>Case No</th>
+                            <th>Court</th>
+                            <th>Petitioner</th>
+                            <th>Respondent</th>
+                            <th>Next Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        `;
+
+        Swal.fire({
+            title: '📅 Upcoming Hearings (≤ 30 days)',
+            html: html,
+            width: 850,
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#ff9800',
+            timer: 20000,
+            timerProgressBar: true
+        });
+    };
 
     /* ============================================================
        CLEAR SEARCH
        ============================================================ */
 
     window.clearSearch = function () {
-
         document.getElementById("searchBox").value = "";
-
         renderTable();
     };
-
 
     /* ============================================================
        ADD CASE
        ============================================================ */
 
     window.openAddCase = async function () {
-
         const { value: formValues } = await Swal.fire({
-
             title: "Add Pending Court Case",
-
             width: "900px",
-
             html: getCaseFormHTML({}),
-
             focusConfirm: false,
-
             showCancelButton: true,
-
             confirmButtonText: "Save Case",
-
             cancelButtonText: "Cancel",
-
             didOpen: () => {
-
                 addDateInputValidation();
-
             },
-
             preConfirm: () => {
-
                 return getFormData();
-
             }
-
         });
-
 
         if (!formValues) return;
 
-
         if (!formValues.limbsID) {
-
             Swal.fire(
                 "Required",
                 "LIMBS ID is required.",
                 "warning"
             );
-
             return;
         }
 
-
         if (!isValidDMY(formValues.limbsIDDateCheck) &&
             formValues.limbsIDDateCheck) {
-
             Swal.fire(
                 "Invalid Date",
                 "Please enter dates in DD-MM-YYYY format.",
                 "warning"
             );
-
             return;
         }
 
-
         if (!validateDates(formValues)) return;
-
 
         const limbsID = formValues.limbsID.trim();
 
-
         if (allCases[limbsID]) {
-
             Swal.fire(
                 "Duplicate LIMBS ID",
                 `A case with LIMBS ID "${limbsID}" already exists.`,
                 "error"
             );
-
             return;
         }
 
-
         try {
-
             await set(
                 ref(db, "pendingcases/" + limbsID),
                 formValues
             );
-
-
             Swal.fire(
                 "Saved",
                 "Court case has been added successfully.",
                 "success"
             );
-
         }
         catch (error) {
-
             console.error(error);
-
             Swal.fire(
                 "Error",
                 error.message,
@@ -809,135 +749,87 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
             );
         }
     };
-
 
     /* ============================================================
        EDIT CASE
        ============================================================ */
 
     window.editCase = async function (encodedKey) {
-
         const key = decodeURIComponent(encodedKey);
-
         const caseData = allCases[key];
-
         if (!caseData) {
-
             Swal.fire(
                 "Error",
                 "Case data not found.",
                 "error"
             );
-
             return;
         }
 
-
         const { value: formValues } = await Swal.fire({
-
             title: "Edit Court Case",
-
             width: "900px",
-
             html: getCaseFormHTML(caseData, true),
-
             focusConfirm: false,
-
             showCancelButton: true,
-
             confirmButtonText: "Update Case",
-
             cancelButtonText: "Cancel",
-
             didOpen: () => {
-
                 addDateInputValidation();
-
             },
-
             preConfirm: () => {
-
                 return getFormData();
-
             }
-
         });
-
 
         if (!formValues) return;
 
-
         if (!formValues.limbsID) {
-
             Swal.fire(
                 "Required",
                 "LIMBS ID is required.",
                 "warning"
             );
-
             return;
         }
 
-
         if (!validateDates(formValues)) return;
-
 
         const newKey = formValues.limbsID.trim();
 
-
         if (newKey !== key && allCases[newKey]) {
-
             Swal.fire(
                 "Duplicate LIMBS ID",
                 `A case with LIMBS ID "${newKey}" already exists.`,
                 "error"
             );
-
             return;
         }
 
-
         try {
-
-            /*
-             * If LIMBS ID has been changed,
-             * delete the old Firebase key and
-             * create the new one.
-             */
-
             if (newKey !== key) {
-
                 await remove(
                     ref(db, "pendingcases/" + key)
                 );
-
                 await set(
                     ref(db, "pendingcases/" + newKey),
                     formValues
                 );
-
             }
             else {
-
                 await update(
                     ref(db, "pendingcases/" + key),
                     formValues
                 );
-
             }
-
-
             Swal.fire(
                 "Updated",
                 "Court case has been updated successfully.",
                 "success"
             );
-
         }
         catch (error) {
-
             console.error(error);
-
             Swal.fire(
                 "Error",
                 error.message,
@@ -946,33 +838,24 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
         }
     };
 
-
     /* ============================================================
        DELETE CASE
        ============================================================ */
 
     window.deleteCase = async function (encodedKey) {
-
         const key = decodeURIComponent(encodedKey);
-
         const caseData = allCases[key];
-
         if (!caseData) {
-
             Swal.fire(
                 "Error",
                 "Case data not found.",
                 "error"
             );
-
             return;
         }
 
-
         const result = await Swal.fire({
-
             title: "Delete Case?",
-
             html: `
                 <div style="text-align:left">
                     <b>LIMBS ID:</b>
@@ -985,41 +868,27 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                     ${escapeHTML(caseData.petitioner)}
                 </div>
             `,
-
             icon: "warning",
-
             showCancelButton: true,
-
             confirmButtonColor: "#d33",
-
             confirmButtonText: "Yes, Delete",
-
             cancelButtonText: "Cancel"
-
         });
-
 
         if (!result.isConfirmed) return;
 
-
         try {
-
             await remove(
                 ref(db, "pendingcases/" + key)
             );
-
-
             Swal.fire(
                 "Deleted",
                 "Court case has been deleted.",
                 "success"
             );
-
         }
         catch (error) {
-
             console.error(error);
-
             Swal.fire(
                 "Error",
                 error.message,
@@ -1028,172 +897,70 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
         }
     };
 
-
     /* ============================================================
        VIEW CASE DETAILS
        ============================================================ */
 
     window.viewCase = function (encodedKey) {
-
         const key = decodeURIComponent(encodedKey);
-
         const caseData = allCases[key];
-
         if (!caseData) {
-
             Swal.fire(
                 "Error",
                 "Case data not found.",
                 "error"
             );
-
             return;
         }
 
-
         Swal.fire({
-
             title: "Case Details",
-
             width: "900px",
-
             html: `
-
                 <div class="case-details-popup">
-
                     <table class="case-info-table">
-
-                        <tr>
-                            <td>LIMBS ID</td>
-                            <td>${escapeHTML(caseData.limbsID)}</td>
-                        </tr>
-
-                        <tr>
-                            <td>Case No</td>
-                            <td>${escapeHTML(caseData.caseNo)}</td>
-                        </tr>
-
-                        <tr>
-                            <td>Registration Date</td>
-                            <td>${escapeHTML(caseData.registrationDate)}</td>
-                        </tr>
-
-                        <tr>
-                            <td>Court</td>
-                            <td>${escapeHTML(caseData.court)}</td>
-                        </tr>
-
-                        <tr>
-                            <td>Petitioner</td>
-                            <td>${escapeHTML(caseData.petitioner)}</td>
-                        </tr>
-
-                        <tr>
-                            <td>Respondent</td>
-                            <td>${escapeHTML(caseData.respondent)}</td>
-                        </tr>
-
-                        <tr>
-                            <td>Advocate</td>
-                            <td>${escapeHTML(caseData.advocate)}</td>
-                        </tr>
-
-                        <tr>
-                            <td>Amount Involved</td>
-                            <td>${escapeHTML(caseData.amountInvolved)}</td>
-                        </tr>
-
-                        <tr>
-                            <td>Previous Date</td>
-                            <td>${escapeHTML(caseData.previousDate)}</td>
-                        </tr>
-
-                        <tr>
-                            <td>Next Date</td>
-                            <td><b>${escapeHTML(caseData.nextDate)}</b></td>
-                        </tr>
-
-                        <tr>
-                            <td>Present Status</td>
-                            <td>${escapeHTML(caseData.presentStatus)}</td>
-                        </tr>
-
-                        <tr>
-                            <td>Date Hearing</td>
-                            <td>${escapeHTML(caseData.DateHearing)}</td>
-                        </tr>
-
-                        <tr>
-                            <td>Acts</td>
-                            <td>${escapeHTML(caseData.acts)}</td>
-                        </tr>
-
-                        <tr>
-                            <td>ERP Unique Case Key</td>
-                            <td>${escapeHTML(caseData.erpUniqueCaseKey)}</td>
-                        </tr>
-
-                        <tr>
-                            <td>CNR</td>
-                            <td>${escapeHTML(caseData.cnr)}</td>
-                        </tr>
-
+                        <tr><td>LIMBS ID</td><td>${escapeHTML(caseData.limbsID)}</td></tr>
+                        <tr><td>Case No</td><td>${escapeHTML(caseData.caseNo)}</td></tr>
+                        <tr><td>Registration Date</td><td>${escapeHTML(caseData.registrationDate)}</td></tr>
+                        <tr><td>Court</td><td>${escapeHTML(caseData.court)}</td></tr>
+                        <tr><td>Petitioner</td><td>${escapeHTML(caseData.petitioner)}</td></tr>
+                        <tr><td>Respondent</td><td>${escapeHTML(caseData.respondent)}</td></tr>
+                        <tr><td>Advocate</td><td>${escapeHTML(caseData.advocate)}</td></tr>
+                        <tr><td>Amount Involved</td><td>${escapeHTML(caseData.amountInvolved)}</td></tr>
+                        <tr><td>Previous Date</td><td>${escapeHTML(caseData.previousDate)}</td></tr>
+                        <tr><td>Next Date</td><td><b>${escapeHTML(caseData.nextDate)}</b></td></tr>
+                        <tr><td>Present Status</td><td>${escapeHTML(caseData.presentStatus)}</td></tr>
+                        <tr><td>Date Hearing</td><td>${escapeHTML(caseData.DateHearing)}</td></tr>
+                        <tr><td>Acts</td><td>${escapeHTML(caseData.acts)}</td></tr>
+                        <tr><td>ERP Unique Case Key</td><td>${escapeHTML(caseData.erpUniqueCaseKey)}</td></tr>
+                        <tr><td>CNR</td><td>${escapeHTML(caseData.cnr)}</td></tr>
                     </table>
 
+                    <h4 style="text-align:left; margin-top:15px;">Case Details</h4>
+                    <div class="details-box">${escapeHTML(caseData.caseDetails)}</div>
 
-                    <h4 style="text-align:left; margin-top:15px;">
-                        Case Details
-                    </h4>
+                    <h4 style="text-align:left; margin-top:15px;">Previous Order</h4>
+                    <div class="details-box">${escapeHTML(caseData.orderPreviousDateHearing)}</div>
 
-                    <div class="details-box">
-                        ${escapeHTML(caseData.caseDetails)}
-                    </div>
-
-
-                    <h4 style="text-align:left; margin-top:15px;">
-                        Previous Order
-                    </h4>
-
-                    <div class="details-box">
-                        ${escapeHTML(caseData.orderPreviousDateHearing)}
-                    </div>
-
-
-                    <h4 style="text-align:left; margin-top:15px;">
-                        Details of Deposits
-                    </h4>
-
-                    <div class="details-box">
-                        ${escapeHTML(caseData.detailsDeposits)}
-                    </div>
-
+                    <h4 style="text-align:left; margin-top:15px;">Details of Deposits</h4>
+                    <div class="details-box">${escapeHTML(caseData.detailsDeposits)}</div>
                 </div>
             `,
-
             confirmButtonText: "Close"
-
         });
     };
-
 
     /* ============================================================
        CASE FORM
        ============================================================ */
 
     function getCaseFormHTML(data, isEdit = false) {
-
         return `
-
             <div style="text-align:left;">
-
                 <div class="row">
-
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label>
-                                LIMBS ID <span class="required">*</span>
-                            </label>
-
+                            <label>LIMBS ID <span class="required">*</span></label>
                             <input
                                 id="swal_limbsID"
                                 class="form-control"
@@ -1203,11 +970,9 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                         </div>
                     </div>
 
-
                     <div class="col-md-6">
                         <div class="form-group">
                             <label>Case No</label>
-
                             <input
                                 id="swal_caseNo"
                                 class="form-control"
@@ -1216,11 +981,9 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                         </div>
                     </div>
 
-
                     <div class="col-md-6">
                         <div class="form-group">
                             <label>Registration Date</label>
-
                             <input
                                 id="swal_registrationDate"
                                 class="form-control date-field"
@@ -1230,11 +993,9 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                         </div>
                     </div>
 
-
                     <div class="col-md-6">
                         <div class="form-group">
                             <label>Court</label>
-
                             <input
                                 id="swal_court"
                                 class="form-control"
@@ -1243,11 +1004,9 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                         </div>
                     </div>
 
-
                     <div class="col-md-6">
                         <div class="form-group">
                             <label>Petitioner</label>
-
                             <input
                                 id="swal_petitioner"
                                 class="form-control"
@@ -1256,11 +1015,9 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                         </div>
                     </div>
 
-
                     <div class="col-md-6">
                         <div class="form-group">
                             <label>Respondent</label>
-
                             <input
                                 id="swal_respondent"
                                 class="form-control"
@@ -1269,11 +1026,9 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                         </div>
                     </div>
 
-
                     <div class="col-md-6">
                         <div class="form-group">
                             <label>Advocate</label>
-
                             <input
                                 id="swal_advocate"
                                 class="form-control"
@@ -1282,11 +1037,9 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                         </div>
                     </div>
 
-
                     <div class="col-md-6">
                         <div class="form-group">
                             <label>Amount Involved</label>
-
                             <input
                                 id="swal_amountInvolved"
                                 class="form-control"
@@ -1295,11 +1048,9 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                         </div>
                     </div>
 
-
                     <div class="col-md-6">
                         <div class="form-group">
                             <label>Previous Date</label>
-
                             <input
                                 id="swal_previousDate"
                                 class="form-control date-field"
@@ -1309,11 +1060,9 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                         </div>
                     </div>
 
-
                     <div class="col-md-6">
                         <div class="form-group">
                             <label>Next Date</label>
-
                             <input
                                 id="swal_nextDate"
                                 class="form-control date-field"
@@ -1323,11 +1072,9 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                         </div>
                     </div>
 
-
                     <div class="col-md-6">
                         <div class="form-group">
                             <label>Present Status</label>
-
                             <input
                                 id="swal_presentStatus"
                                 class="form-control"
@@ -1336,11 +1083,9 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                         </div>
                     </div>
 
-
                     <div class="col-md-6">
                         <div class="form-group">
                             <label>Date Hearing</label>
-
                             <input
                                 id="swal_DateHearing"
                                 class="form-control date-field"
@@ -1350,11 +1095,9 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                         </div>
                     </div>
 
-
                     <div class="col-md-6">
                         <div class="form-group">
                             <label>Acts</label>
-
                             <input
                                 id="swal_acts"
                                 class="form-control"
@@ -1363,11 +1106,9 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                         </div>
                     </div>
 
-
                     <div class="col-md-6">
                         <div class="form-group">
                             <label>ERP Unique Case Key</label>
-
                             <input
                                 id="swal_erpUniqueCaseKey"
                                 class="form-control"
@@ -1376,11 +1117,9 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                         </div>
                     </div>
 
-
                     <div class="col-md-6">
                         <div class="form-group">
                             <label>CNR</label>
-
                             <input
                                 id="swal_cnr"
                                 class="form-control"
@@ -1388,13 +1127,10 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                                 placeholder="CNR">
                         </div>
                     </div>
-
                 </div>
-
 
                 <div class="form-group">
                     <label>Previous Order</label>
-
                     <textarea
                         id="swal_orderPreviousDateHearing"
                         class="form-control"
@@ -1402,10 +1138,8 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                         placeholder="Previous Order">${escapeHTML(data.orderPreviousDateHearing || "")}</textarea>
                 </div>
 
-
                 <div class="form-group">
                     <label>Case Details</label>
-
                     <textarea
                         id="swal_caseDetails"
                         class="form-control"
@@ -1413,192 +1147,114 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
                         placeholder="Detailed case information">${escapeHTML(data.caseDetails || "")}</textarea>
                 </div>
 
-
                 <div class="form-group">
                     <label>Details of Deposits</label>
-
                     <textarea
                         id="swal_detailsDeposits"
                         class="form-control"
                         rows="4"
                         placeholder="Details of deposits">${escapeHTML(data.detailsDeposits || "")}</textarea>
                 </div>
-
             </div>
         `;
     }
-
 
     /* ============================================================
        GET FORM DATA
        ============================================================ */
 
     function getFormData() {
-
         return {
-
-            limbsID:
-                document.getElementById("swal_limbsID").value.trim(),
-
-            caseNo:
-                document.getElementById("swal_caseNo").value.trim(),
-
-            registrationDate:
-                document.getElementById("swal_registrationDate").value.trim(),
-
-            court:
-                document.getElementById("swal_court").value.trim(),
-
-            petitioner:
-                document.getElementById("swal_petitioner").value.trim(),
-
-            respondent:
-                document.getElementById("swal_respondent").value.trim(),
-
-            advocate:
-                document.getElementById("swal_advocate").value.trim(),
-
-            amountInvolved:
-                document.getElementById("swal_amountInvolved").value.trim(),
-
-            previousDate:
-                document.getElementById("swal_previousDate").value.trim(),
-
-            nextDate:
-                document.getElementById("swal_nextDate").value.trim(),
-
-            presentStatus:
-                document.getElementById("swal_presentStatus").value.trim(),
-
-            orderPreviousDateHearing:
-                document.getElementById("swal_orderPreviousDateHearing").value.trim(),
-
-            DateHearing:
-                document.getElementById("swal_DateHearing").value.trim(),
-
-            acts:
-                document.getElementById("swal_acts").value.trim(),
-
-            caseDetails:
-                document.getElementById("swal_caseDetails").value.trim(),
-
-            erpUniqueCaseKey:
-                document.getElementById("swal_erpUniqueCaseKey").value.trim(),
-
-            cnr:
-                document.getElementById("swal_cnr").value.trim(),
-
-            detailsDeposits:
-                document.getElementById("swal_detailsDeposits").value.trim()
-
+            limbsID: document.getElementById("swal_limbsID").value.trim(),
+            caseNo: document.getElementById("swal_caseNo").value.trim(),
+            registrationDate: document.getElementById("swal_registrationDate").value.trim(),
+            court: document.getElementById("swal_court").value.trim(),
+            petitioner: document.getElementById("swal_petitioner").value.trim(),
+            respondent: document.getElementById("swal_respondent").value.trim(),
+            advocate: document.getElementById("swal_advocate").value.trim(),
+            amountInvolved: document.getElementById("swal_amountInvolved").value.trim(),
+            previousDate: document.getElementById("swal_previousDate").value.trim(),
+            nextDate: document.getElementById("swal_nextDate").value.trim(),
+            presentStatus: document.getElementById("swal_presentStatus").value.trim(),
+            orderPreviousDateHearing: document.getElementById("swal_orderPreviousDateHearing").value.trim(),
+            DateHearing: document.getElementById("swal_DateHearing").value.trim(),
+            acts: document.getElementById("swal_acts").value.trim(),
+            caseDetails: document.getElementById("swal_caseDetails").value.trim(),
+            erpUniqueCaseKey: document.getElementById("swal_erpUniqueCaseKey").value.trim(),
+            cnr: document.getElementById("swal_cnr").value.trim(),
+            detailsDeposits: document.getElementById("swal_detailsDeposits").value.trim()
         };
     }
-
 
     /* ============================================================
        VALIDATE DATES
        ============================================================ */
 
     function validateDates(data) {
-
         const dateFields = [
-            {
-                name: "Registration Date",
-                value: data.registrationDate
-            },
-            {
-                name: "Previous Date",
-                value: data.previousDate
-            },
-            {
-                name: "Next Date",
-                value: data.nextDate
-            },
-            {
-                name: "Date Hearing",
-                value: data.DateHearing
-            }
+            { name: "Registration Date", value: data.registrationDate },
+            { name: "Previous Date", value: data.previousDate },
+            { name: "Next Date", value: data.nextDate },
+            { name: "Date Hearing", value: data.DateHearing }
         ];
 
-
         for (const field of dateFields) {
-
             if (
                 field.value &&
                 !isValidDMY(field.value)
             ) {
-
                 Swal.fire(
                     "Invalid Date",
                     `${field.name} must be in DD-MM-YYYY format.`,
                     "warning"
                 );
-
                 return false;
             }
         }
-
-
         return true;
     }
-
 
     /* ============================================================
        DATE INPUT VALIDATION
        ============================================================ */
 
     function addDateInputValidation() {
-
         document
             .querySelectorAll(".date-field")
             .forEach(input => {
-
                 input.addEventListener("input", function () {
-
                     let value =
                         this.value.replace(/\D/g, "");
-
                     if (value.length > 8) {
                         value = value.substring(0, 8);
                     }
-
                     if (value.length > 4) {
-
                         value =
                             value.substring(0, 2) +
                             "-" +
                             value.substring(2, 4) +
                             "-" +
                             value.substring(4);
-
                     }
                     else if (value.length > 2) {
-
                         value =
                             value.substring(0, 2) +
                             "-" +
                             value.substring(2);
-
                     }
-
                     this.value = value;
-
                 });
-
             });
     }
-
 
     /* ============================================================
        HTML ESCAPE
        ============================================================ */
 
     function escapeHTML(value) {
-
         if (value === null || value === undefined) {
             return "";
         }
-
         return String(value)
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
@@ -1607,12 +1263,9 @@ if (userpriv === 'SAU' || userpriv === 'LGL') {
             .replace(/'/g, "&#039;");
     }
 
-
     function escapeAttribute(value) {
-
         return escapeHTML(value || "");
     }
-
 
     /* ============================================================
        INITIAL LOAD
