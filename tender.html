@@ -96,14 +96,14 @@
                     <th style="text-align:center;">Vendor Code</th>
                     <th style="text-align:center;">Agreement</th>
                     <th style="text-align:center;">Work Desc</th>
-                    <th style="text-align:center;">Agreement Valid</th>
+                    <th style="text-align:center;">Agreement End date</th>
                     <th style="text-align:center;">Remaining (Days)</th>
                     <th style="text-align:center;">APO</th>
-                    <th style="text-align:center;">APO Valid</th>
-                    <th style="text-align:center;">Remaining APO</th>
+                    <th style="text-align:center;">APO <br>End date</th>
+                    <th style="text-align:center;">Remaining (Days)</th>
                     <th style="text-align:center;">PBG</th>
-                    <th style="text-align:center;">PBG Valid</th>
-                    <th style="text-align:center;">Remaining PBG</th>
+                    <th style="text-align:center;">PBG <br>End date</th>
+                    <th style="text-align:center;">Remaining (Days)</th>
                     <th style="text-align:center;">PO</th>
                     <th id="thaction1" class="action-col" style="display: none; text-align:center;">Action<br>(Contractor)</th>
                     <th id="thaction2" class="action-col" style="display: none; text-align:center;">Action<br>(Tender)</th>
@@ -286,8 +286,8 @@ const todayDate = await todayWithoutTime();
                     const apoDays = getRemainingDays(contractor.apovalidupto);
                     const pbgDays = getRemainingDays(contractor.pbgvalidupto);
 
-                    // Collect alerts if any date is within 365 days
-                    if (agreementDays !== "" && agreementDays <= 365) {
+                    // Collect alerts if any date is within 180 days
+                    if (agreementDays !== "" && agreementDays <= 180) {
                         alertList.push({
                             vendorcode: contractor.vendorcode || "",
                             contractor: contractor.contractor || "",
@@ -299,7 +299,7 @@ const todayDate = await todayWithoutTime();
                         });
                     }
 
-                    if (apoDays !== "" && apoDays <= 365) {
+                    if (apoDays !== "" && apoDays <= 180) {
                         alertList.push({
                             vendorcode: contractor.vendorcode || "",
                             contractor: contractor.contractor || "",
@@ -311,7 +311,7 @@ const todayDate = await todayWithoutTime();
                         });
                     }
 
-                    if (pbgDays !== "" && pbgDays <= 365) {
+                    if (pbgDays !== "" && pbgDays <= 180) {
                         alertList.push({
                             vendorcode: contractor.vendorcode || "",
                             contractor: contractor.contractor || "",
@@ -428,7 +428,7 @@ const todayDate = await todayWithoutTime();
                     }
                     if (rowBg) tr.style.background = rowBg;
                     tbody.appendChild(tr);
-                    if (idx === 0) sl++;
+                    //if (idx === 0) sl++;
                 }
                 if (tenderAdded) sl++;
             }
