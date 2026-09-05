@@ -33,7 +33,10 @@
 </head>
 <body>
 <div class="main-content">
-  <button class="btn btn-success" id="home-btn">HOME</button>
+  <button class="btn btn-success" id="home-btn">
+    <span class="glyphicon glyphicon-home"></span>
+    HOME
+  </button>
   <h1 class="page-title">LAND MUTATION</h1>
 
   <div class="count-box">Total Count: <b id="searchcount">0</b></div>
@@ -60,7 +63,7 @@
   <div class="table-container">
     <table class="table table-bordered table-striped" id="mutation-table">
       <thead><tr>
-        <th>SL</th><th>Property ID</th><th>Asset No</th><th>Property Name</th><th>District</th><th>Total Area<br>(in Sq. Metre)</th><th>Type</th><th>Present Entitlement</th><th>Certificate</th><th>Mutation Date</th><th>Present Status</th><th>Office Responsible</th><th>Next Hearing Date</th><th>Action</th>
+        <th>SL</th><th>REM ID</th><th>Asset No</th><th>Property Name</th><th>District</th><th>Total Area<br>(in Sq. Metre)</th><th>Type</th><th>Present Entitlement</th><th>Certificate</th><th>Mutation Date</th><th>Present Status</th><th>Office Responsible</th><th>Next Hearing Date</th><th id="thaction" style="display: none;">Action</th>
       </tr></thead>
       <tbody id="mutation-body"></tbody>
     </table>
@@ -68,6 +71,19 @@
 </div>
 
 <script type="module">
+
+  const userpriv = sessionStorage.getItem("userpriv");
+    console.log(userpriv);
+    const actionHeader = document.getElementById('thaction');
+   
+    if (userpriv === 'SAU' || userpriv === 'LM') {
+        actionHeader.style.display = 'table-cell';
+   
+    } else {
+        actionHeader.style.display = 'none';
+    
+    } 
+
   import { getDatabase, ref, onValue, get, set, update } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
   import { app } from "./firebase-config.js";
 
@@ -78,7 +94,27 @@
   let allmutation = {};
   let isFirstLoad = true;  // flag to show popup only once on initial load
 
-  document.getElementById("home-btn").onclick = () => window.location.href = "index.html";
+  document.getElementById("home-btn").onclick = () => window.location.href = "trphqhome.html";
+
+  function getFirebaseServerDateTime() {
+  return new Promise((resolve, reject) => {
+    const offsetRef = ref(db, ".info/serverTimeOffset");
+    onValue(offsetRef, (snapshot) => {
+      const offset = snapshot.val();
+      if (offset !== null) {
+        const estimatedServerTime = new Date(Date.now() + offset);
+        const year = estimatedServerTime.getFullYear();
+        const month = String(estimatedServerTime.getMonth() + 1).padStart(2, '0');
+        const day = String(estimatedServerTime.getDate()).padStart(2, '0');
+        const date = `${day}-${month}-${year}`;
+        const time = estimatedServerTime.toTimeString().split(' ')[0];
+        resolve({date});
+      } else {
+        reject("Could not get server time offset.");
+      }
+    }, { onlyOnce: true });
+  });
+}
 
   onValue(dataRef, snapshot => {
     allmutation = snapshot.val() || {};
@@ -208,7 +244,7 @@
         <td style="text-align:center">${escapeHTML(d.presentStatus)}</td>
         <td>${escapeHTML(d.officeResponsible)}</td>
         <td style="text-align:center">${escapeHTML(d.nextHearingDate || d.nextHearingdate)}</td>
-        <td class="action-buttons"><button class="btn btn-info btn-xs edit-btn">Edit</button> <button class="btn btn-danger btn-xs delete-btn">Delete</button></td>
+        <td class="action-buttons" style="display: ${ (userpriv === 'SAU' || userpriv === 'LM') ? 'table-cell' : 'none' };"><button class="btn btn-info btn-xs edit-btn">Edit</button> <button class="btn btn-danger btn-xs delete-btn">Delete</button></td>
       `;
       row.querySelector(".edit-btn").onclick = () => editMutation(d);
       row.querySelector(".delete-btn").onclick = () => deleteMutation(d.key);
@@ -227,9 +263,10 @@
   }
 
   // ---------- SHOW HEARING ALERT (popup) ----------
-  function showHearingAlert() {
+  async function showHearingAlert() {
     const allData = getFilteredData();  // respects current filters
-    const today = new Date();
+    const { date } = await getFirebaseServerDateTime();
+    const today = date;
     today.setHours(0, 0, 0, 0);
     const future = new Date(today);
     future.setDate(today.getDate() + 15);

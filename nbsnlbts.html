@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NBSNL BTS</title>
+    <title>BTS</title>
     
   
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
@@ -66,7 +66,7 @@
 
 <div class="main-content">
     <button class="btn btn-success" id="home-btn"> HOME</button>
-    <h1 style="display:flex; text-align: center; margin-left: 40%;"> NBSNL BTS LIST</h1>
+    <h1 style="display:flex; text-align: center; margin-left: 40%;"> BTS LIST</h1>
     
 <div>Total Count: <b id="searchcount"></b> </div>
 <div style="display: inline-flex; justify-content: space-evenly;" >
@@ -113,7 +113,7 @@
           <th style="text-align: center;">HPC Report</th>
           <th style="text-align: center;">Next Revision <br> Date</th>
           <th style="text-align: center;">Next Revision <br> Due After (Days)</th>
-          <th style="text-align: center;">Action</th>
+          <th style="text-align: center; display: none;" id="thaction">Action</th>
          
         </tr>
       </thead>
@@ -134,7 +134,18 @@
        
     <script type="module">
 
- 
+
+    const userpriv = sessionStorage.getItem("userpriv");
+    console.log(userpriv);
+    const actionHeader = document.getElementById('thaction');
+   
+    if (userpriv === 'SAU' || userpriv === 'PLG') {
+        actionHeader.style.display = 'table-cell';
+   
+    } else {
+        actionHeader.style.display = 'none';
+    
+    } 
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
@@ -168,7 +179,7 @@ function getFirebaseServerDateTime() {
 
 const btnAddEntry = document.getElementById('addBtn');
 
-const dataRef = ref(db, 'btslist');
+const dataRef = ref(db, 'nbsnlbtslist');
 
 
 let allbts = {};
@@ -335,7 +346,7 @@ async function renderTable() {
                                                 
                 </td>
 
-            <td style="width:130px;">
+            <td style="width:130px; display: ${ (userpriv === 'SAU' || userpriv === 'PLG') ? 'table-cell' : 'none' };">
                 <button class="btn btn-info btn-xs edit-btn">Edit</button>
                 <button class="btn btn-danger btn-xs delete-btn">Delete</button>
             </td>
@@ -798,9 +809,5 @@ document.getElementById("exportBtn").addEventListener("click", function () {
     </script>
 </body>
 </html>
-
-
-
-
 
 

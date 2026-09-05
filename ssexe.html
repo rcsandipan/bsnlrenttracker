@@ -92,6 +92,7 @@ body{background:#f3f6f9;font-family:Arial,Helvetica,sans-serif}
 </div>
 <div class="col-md-4 text-right">
 <b>As on:</b> <span id="currentDate"></span><br><br>
+<button class="btn btn-success" onclick="homePage()"><i class="fa fa-home"></i> Home</button>
 <button class="btn btn-primary" onclick="openAddEmployee()"><i class="fa fa-plus"></i> Add Employee</button>
 <button class="btn btn-success" onclick="exportExcel()"><i class="fa fa-file-excel-o"></i> Export Excel</button>
 </div>
@@ -233,7 +234,7 @@ body{background:#f3f6f9;font-family:Arial,Helvetica,sans-serif}
 <th>Priority</th>
 <th>Transfer Status</th>
 <th>Details</th>
-<th class="action-col">Action</th>
+<th class="action-col" id="thaction" style="display: none;"> Action</th>
 </tr>
 </thead>
 
@@ -421,12 +422,43 @@ body{background:#f3f6f9;font-family:Arial,Helvetica,sans-serif}
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
 <script type="module">
+    const userpriv = sessionStorage.getItem("userpriv");
+    console.log(userpriv);
+    const actionHeader = document.getElementById('thaction');
+    
+    if (userpriv === 'SAU' || userpriv === 'ADN') {
+        actionHeader.style.display = 'table-cell';
+        
+    } else {
+        actionHeader.style.display = 'none';
+     
+    }
 
 import{getDatabase,ref,onValue,set,update,remove,push}from"https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
 import{app}from"./firebase-config.js";
 
 const db=getDatabase(app);
-const employeeRef=ref(db,"employees");
+const employeeRef=ref(db,"ssjtosde");
+
+   function getFirebaseServerDateTime() {
+  return new Promise((resolve, reject) => {
+    const offsetRef = ref(db, ".info/serverTimeOffset");
+    onValue(offsetRef, (snapshot) => {
+      const offset = snapshot.val();
+      if (offset !== null) {
+        const estimatedServerTime = new Date(Date.now() + offset);
+        const year = estimatedServerTime.getFullYear();
+        const month = String(estimatedServerTime.getMonth() + 1).padStart(2, '0');
+        const day = String(estimatedServerTime.getDate()).padStart(2, '0');
+        const date = `${day}-${month}-${year}`;
+        const time = estimatedServerTime.toTimeString().split(' ')[0];
+        resolve({date});
+      } else {
+        reject("Could not get server time offset.");
+      }
+    }, { onlyOnce: true });
+  });
+}
 
 let allEmployees=[];
 let filteredEmployees = [];
@@ -435,7 +467,24 @@ const DESIGNATIONS=[
 "JTO","SDE","AGM"
 ];
 
-document.getElementById("currentDate").innerText=formatDate(new Date());
+async function todayWithoutTime() {
+    try {
+        const { date } = await getFirebaseServerDateTime();
+        return date;
+    } catch (error) {
+        console.error("Error getting server time:", error);
+        // Fallback to local date
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${day}-${month}-${year}`;
+    }
+    }
+const todayDate = await todayWithoutTime();
+console.log(todayDate);
+
+document.getElementById("currentDate").innerText= todayDate;
 
 function initializeDesignationDropdown(){
 const select=document.getElementById("empDesignation");
@@ -858,7 +907,7 @@ row.innerHTML=`
 </button>
 </td>
 
-<td class="text-center action-col">
+<td class="text-center action-col"  style="display: ${ (userpriv === 'SAU' || userpriv === 'ADN') ? 'table-cell' : 'none' };">
 
 <button class="btn btn-xs btn-primary action-btn" onclick="openEditEmployee('${emp.firebaseKey}')" title="Edit Employee">
 <i class="fa fa-pencil"></i> Edit
@@ -926,48 +975,121 @@ return String(date.getDate()).padStart(2,"0")+"-"+String(date.getMonth()+1).padS
 
 }
 
-function calculateTenure(dateString){
-
-const start=getDate(dateString);
-
-if(isNaN(start.getTime()))return"N/A";
-
-const today=new Date();
-
-let years=today.getFullYear()-start.getFullYear();
-let months=today.getMonth()-start.getMonth();
-let days=today.getDate()-start.getDate();
-
-if(days<0){
-months--;
-const previousMonth=new Date(today.getFullYear(),today.getMonth(),0);
-days+=previousMonth.getDate();
+function parseDMY(dateStr) {
+    if (!dateStr) return null;
+    const parts = String(dateStr).trim().split("-");
+    if (parts.length !== 3) return null;
+    const day = Number(parts[0]);
+    const month = Number(parts[1]);
+    const year = Number(parts[2]);
+    if (!day || !month || !year) return null;
+    const date = new Date(year, month - 1, day);
+    if (
+        date.getFullYear() !== year ||
+        date.getMonth() !== month - 1 ||
+        date.getDate() !== day
+    ) {
+        return null;
+    }
+    return date;
 }
 
-if(months<0){
-years--;
-months+=12;
+function calculateTenure(dateString) {
+    if (!dateString || dateString.trim() === '') {
+        return "N/A";
+    }
+    
+    // Parse the start date
+    const start = parseDMY(dateString);
+    
+    if (!start || isNaN(start.getTime())) {
+        return "Invalid Date";
+    }
+    
+    // Parse today's date
+    const today = parseDMY(todayDate);
+    
+    if (!today || isNaN(today.getTime())) {
+        console.error("Invalid today date:", todayDate);
+        return "N/A";
+    }
+    
+    // Ensure start date is not in the future
+    if (start > today) {
+        return "Future Date";
+    }
+    
+    let years = today.getFullYear() - start.getFullYear();
+    let months = today.getMonth() - start.getMonth();
+    let days = today.getDate() - start.getDate();
+    
+    // Adjust days
+    if (days < 0) {
+        months--;
+        const previousMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        days += previousMonth.getDate();
+    }
+    
+    // Adjust months
+    if (months < 0) {
+        years--;
+        months += 12;
+    }
+    
+    // Optional: Format output with proper pluralization
+    const yearStr = `${years} Y${years !== 1 ? '' : ''}`;
+    const monthStr = `${months} M${months !== 1 ? '' : ''}`;
+    const dayStr = `${days} D${days !== 1 ? '' : ''}`;
+    
+    return `${yearStr} ${monthStr} ${dayStr}`.trim();
 }
 
-return`${years} Y ${months} M ${days} D`;
+// function calculateAge(dateString){
 
-}
+// const dob=getDate(dateString);
 
-function calculateAge(dateString){
+// if(isNaN(dob.getTime()))return"N/A";
 
-const dob=getDate(dateString);
+// const today=new Date(todayDate);
 
-if(isNaN(dob.getTime()))return"N/A";
+// let age=today.getFullYear()-dob.getFullYear();
+// const month=today.getMonth()-dob.getMonth();
 
-const today=new Date();
+// if(month<0||(month===0&&today.getDate()<dob.getDate()))age--;
 
-let age=today.getFullYear()-dob.getFullYear();
-const month=today.getMonth()-dob.getMonth();
+// return age;
 
-if(month<0||(month===0&&today.getDate()<dob.getDate()))age--;
+// }
 
-return age;
-
+function calculateAge(dateString) {
+    // Parse the date of birth from DD-MM-YYYY format
+    const dob = parseDMY(dateString);
+    
+    if (!dob || isNaN(dob.getTime())) {
+        return "N/A";
+    }
+    
+    // Parse today's date from DD-MM-YYYY format
+    const today = parseDMY(todayDate);
+    
+    if (!today || isNaN(today.getTime())) {
+        return "N/A";
+    }
+    
+    // Check if DOB is in the future
+    if (dob > today) {
+        return "Future Date";
+    }
+    
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    
+    // Adjust age if birthday hasn't occurred yet this year
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+        age--;
+    }
+    
+    return age;
 }
 
 function getTenureClass(tenure){
@@ -1102,7 +1224,7 @@ window.exportExcel = function() {
         "Filtered Employees"
     );
 
-    const today = new Date();
+    const today = new Date(todayDate);
 
     const datePart =
         String(today.getDate()).padStart(2, "0") +
@@ -1125,6 +1247,10 @@ window.exportExcel = function() {
         showConfirmButton: false
     });
 };
+
+window.homePage = function(){
+    window.location.href = "trphqhome.html" ;
+}
 
 
 

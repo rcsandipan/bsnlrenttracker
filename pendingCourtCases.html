@@ -188,7 +188,7 @@
             }
 
             .page-title {
-                font-size: 20px;
+                font-size: 30px;
             }
 
             #searchBox {
@@ -204,7 +204,7 @@
     <div class="page-container">
 
         <div class="page-title">
-            Pending Court Cases
+            <h1>Pending Court Cases</h1>
         </div>
 
         <div class="toolbar">
@@ -235,6 +235,11 @@
             <button class="btn btn-hearing-alert" onclick="show15DayAlert()">
                 <span class="glyphicon glyphicon-calendar"></span>
                 Next 15 Days
+            </button>
+
+            <button style = "margin-left: 200px;"   class ="btn btn-success" onclick="homePage()">
+                <span class="glyphicon glyphicon-home"></span>
+                HOME
             </button>
 
         </div>
@@ -328,6 +333,29 @@
     let allCases = {};
     let isFirstLoad = true;
 
+     function getFirebaseServerDateTime() {
+  return new Promise((resolve, reject) => {
+    const offsetRef = ref(db, ".info/serverTimeOffset");
+    onValue(offsetRef, (snapshot) => {
+      const offset = snapshot.val();
+      if (offset !== null) {
+        const estimatedServerTime = new Date(Date.now() + offset);
+        const year = estimatedServerTime.getFullYear();
+        const month = String(estimatedServerTime.getMonth() + 1).padStart(2, '0');
+        const day = String(estimatedServerTime.getDate()).padStart(2, '0');
+        const date = `${day}-${month}-${year}`;
+        const time = estimatedServerTime.toTimeString().split(' ')[0];
+        resolve({date});
+      } else {
+        reject("Could not get server time offset.");
+      }
+    }, { onlyOnce: true });
+  });
+}
+
+
+
+
     /* ============================================================
        DATE FUNCTIONS
        Firebase date format = DD-MM-YYYY
@@ -364,13 +392,16 @@
         return parseDMY(dateStr) !== null;
     }
 
-    function todayWithoutTime() {
-        const d = new Date();
-        return new Date(
-            d.getFullYear(),
-            d.getMonth(),
-            d.getDate()
-        );
+    async function todayWithoutTime() {
+        const { date } = await getFirebaseServerDateTime();
+        const d = date ;
+        console.log(d);
+        // return new Date(
+        //     d.getFullYear(),
+        //     d.getMonth(),
+        //     d.getDate()
+        // );
+        return(d);
     }
 
     /* ============================================================
@@ -460,7 +491,14 @@
        RENDER TABLE
        ============================================================ */
 
-    window.renderTable = function () {
+    window.renderTable = async function () {
+
+    const serverDateStr = await getFirebaseServerDateTime();
+    const todayDate = parseDMY(serverDateStr.date);
+    
+    // If server date fails, fallback to local date
+    const today = todayDate || new Date();
+    today.setHours(0, 0, 0, 0);
         const tbody = document.getElementById("caseTableBody");
         const searchText =
             document.getElementById("searchBox")
@@ -490,7 +528,11 @@
             const nextDate = parseDMY(caseData.nextDate);
             let dateClass = "";
             if (nextDate) {
-                const today = todayWithoutTime();
+                //const today = todayWithoutTime();
+                today.setHours(0, 0, 0, 0);
+                console.log(today);
+                
+    
                 const difference =
                     Math.ceil(
                         (nextDate - today) /
@@ -560,11 +602,17 @@
        SUMMARY
        ============================================================ */
 
-    function updateSummary() {
+    async function updateSummary() {
         const cases = Object.values(allCases);
         let overdue = 0;
         let near = 0;
-        const today = todayWithoutTime();
+
+    const serverDateStr = await getFirebaseServerDateTime();
+    const todayDate = parseDMY(serverDateStr.date);
+    
+    // If server date fails, fallback to local date
+    const today = todayDate || new Date();
+    today.setHours(0, 0, 0, 0);
 
         cases.forEach(caseData => {
             const nextDate = parseDMY(caseData.nextDate);
@@ -591,9 +639,19 @@
        SHOW 30 DAY ALERT (POPUP ON LOAD & MANUAL)
        ============================================================ */
 
-    window.show15DayAlert = function () {
+    window.show15DayAlert = async function () {
         const cases = Object.values(allCases);
-        const today = todayWithoutTime();
+
+       // const today = todayWithoutTime();
+           const serverDateStr = await getFirebaseServerDateTime();
+           const todayDate = parseDMY(serverDateStr.date);
+    
+    // If server date fails, fallback to local date
+        const today = todayDate || new Date();
+        today.setHours(0, 0, 0, 0);
+
+
+
         const future15 = new Date(today);
         future15.setDate(today.getDate() + 15);
 
@@ -614,7 +672,7 @@
             Swal.fire({
                 icon: 'info',
                 title: 'No Upcoming Hearings',
-                text: `No cases with next date within the next 15 days (today – ${formatDate(future30)}).`,
+                text: `No cases with next date within the next 15 days (today – ${formatDate(future15)}).`,
                 timer: 3000,
                 timerProgressBar: true
             });
@@ -1273,6 +1331,11 @@
        ============================================================ */
 
     loadCases();
+
+
+    window.homePage = function (){
+        location.href = "trphqhome.html";
+    }
 
 </script>
 

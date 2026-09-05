@@ -63,7 +63,7 @@
     <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
         <div>
             <button class="btn btn-success" id="home-btn">🏠 HOME</button>
-            <h1 style="display:inline-block; margin-left: 20px;">
+            <h1 style="display:inline-block; margin-left: 450px;">
                 TENDER LIST
                 <span id="alertBadge" class="alert-badge" style="display:none;">0</span>
             </h1>
@@ -105,8 +105,8 @@
                     <th style="text-align:center;">PBG Valid</th>
                     <th style="text-align:center;">Remaining PBG</th>
                     <th style="text-align:center;">PO</th>
-                    <th style="text-align:center;">Action<br>(Contractor)</th>
-                    <th style="text-align:center;">Action<br>(Tender)</th>
+                    <th id="thaction1" class="action-col" style="display: none; text-align:center;">Action<br>(Contractor)</th>
+                    <th id="thaction2" class="action-col" style="display: none; text-align:center;">Action<br>(Tender)</th>
                 </tr>
             </thead>
             <tbody id="tender-body">
@@ -118,20 +118,20 @@
 
 <!-- ============ FIREBASE CONFIG & MODULE SCRIPT ============ -->
 <script type="module">
-    // ---- Firebase imports ----
-    // import { initializeApp } from "firebase/app";
-    // import { getDatabase, ref, onValue, get, set, update, remove, push } from "firebase/database";
 
-    // // Your Firebase config (replace with your own)
-    // const firebaseConfig = {
-    //     apiKey: "AIzaSyDummyKeyDoNotUse",
-    //     authDomain: "your-app.firebaseapp.com",
-    //     databaseURL: "https://your-app-default-rtdb.firebaseio.com",
-    //     projectId: "your-app",
-    //     storageBucket: "your-app.appspot.com",
-    //     messagingSenderId: "123456789",
-    //     appId: "1:123456789:web:abcdef"
-    // };
+    const userpriv = sessionStorage.getItem("userpriv");
+    console.log(userpriv);
+    const actionHeader1 = document.getElementById('thaction1');
+    const actionHeader2 = document.getElementById('thaction2');
+    if (userpriv === 'SAU' || userpriv === 'ADN') {
+        actionHeader1.style.display = 'table-cell';
+        actionHeader2.style.display = 'table-cell';
+    } else {
+        actionHeader1.style.display = 'none';
+        actionHeader2.style.display = 'none';
+    }
+    // ---- Firebase imports ----
+  
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
@@ -142,12 +142,68 @@
     const db = getDatabase(app);
 
     // Google Apps Script upload endpoint
-    const appsScriptUrl = "https://script.google.com/macros/s/AKfycby3V4jAoYjAKglqj8x2SSpIbmaCcbuEajZw9LC2ClyD8UNxwaM6yH9HM5uwWEZK8bTZTg/exec";
+    const appsScriptUrl = "https://script.google.com/macros/s/AKfycbyPQE1pkB-l4i1jxXkH5OZZL7qL19tAzp9GYAWILm64IKglHU6lB7A8o9GMMp5YqCJLxw/exec";
 
+   
+      function getFirebaseServerDateTime() {
+  return new Promise((resolve, reject) => {
+    const offsetRef = ref(db, ".info/serverTimeOffset");
+    onValue(offsetRef, (snapshot) => {
+      const offset = snapshot.val();
+      if (offset !== null) {
+        const estimatedServerTime = new Date(Date.now() + offset);
+        const year = estimatedServerTime.getFullYear();
+        const month = String(estimatedServerTime.getMonth() + 1).padStart(2, '0');
+        const day = String(estimatedServerTime.getDate()).padStart(2, '0');
+        const date = `${day}-${month}-${year}`;
+        const time = estimatedServerTime.toTimeString().split(' ')[0];
+        resolve({date});
+      } else {
+        reject("Could not get server time offset.");
+      }
+    }, { onlyOnce: true });
+  });
+}
+
+async function todayWithoutTime() {
+    try {
+        const { date } = await getFirebaseServerDateTime();
+        return date;
+    } catch (error) {
+        console.error("Error getting server time:", error);
+        // Fallback to local date
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${day}-${month}-${year}`;
+    }
+    }
+const todayDate = await todayWithoutTime();
+   
     // ----- helpers -----
     function escapeHtml(value) {
         return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
+
+    function parseDMY(dateStr) {
+    if (!dateStr) return null;
+    const parts = String(dateStr).trim().split("-");
+    if (parts.length !== 3) return null;
+    const day = Number(parts[0]);
+    const month = Number(parts[1]);
+    const year = Number(parts[2]);
+    if (!day || !month || !year) return null;
+    const date = new Date(year, month - 1, day);
+    if (
+        date.getFullYear() !== year ||
+        date.getMonth() !== month - 1 ||
+        date.getDate() !== day
+    ) {
+        return null;
+    }
+    return date;
+}
 
     function getRemainingDays(dateString) {
         if (!dateString) return "";
@@ -157,7 +213,8 @@
         const month = parseInt(parts[1], 10) - 1;
         const year = parseInt(parts[2], 10);
         const expiry = new Date(year, month, day);
-        const today = new Date();
+        const today = parseDMY(todayDate);
+        //const today = new Date();
         today.setHours(0,0,0,0);
         expiry.setHours(0,0,0,0);
         const diff = expiry.getTime() - today.getTime();
@@ -178,13 +235,13 @@
         return `${parts[2]}-${parts[1]}-${parts[0]}`;
     }
 
-    function parseDMY(dateStr) {
-        if (!dateStr) return null;
-        const parts = dateStr.split('-');
-        if (parts.length !== 3) return null;
-        const [day, month, year] = parts.map(Number);
-        return new Date(year, month - 1, day);
-    }
+    // function parseDMY(dateStr) {
+    //     if (!dateStr) return null;
+    //     const parts = dateStr.split('-');
+    //     if (parts.length !== 3) return null;
+    //     const [day, month, year] = parts.map(Number);
+    //     return new Date(year, month - 1, day);
+    // }
 
     // ----- Global alert list -----
     let globalAlertList = [];
@@ -205,7 +262,8 @@
             const alertList = [];
 
             // Get current date for comparison
-            const today = new Date();
+            //const today = new Date();
+            const today = parseDMY(todayDate);
             today.setHours(0,0,0,0);
 
             for (const tenderKey in tenders) {
@@ -335,11 +393,13 @@
                             <td class="date-column" style="text-align:center; ${isPBGExpiring ? 'color:red;font-weight:bold;' : ''}">${contractor.pbgvalidupto || ""}</td>
                             <td style="text-align:center; ${isPBGExpiring ? 'color:red;font-weight:bold;' : ''}">${pbgDays}</td>
                             <td style="text-align:center;">${contractor.po ? `<a href="${contractor.po}" target="_blank" class="btn btn-info btn-xs">View</a>` : ""}</td>
-                            <td style="text-align:center;">
+                            <td class="text-center action-col"
+                            style="display: ${ (userpriv === 'SAU' || userpriv === 'LGL') ? 'table-cell' : 'none' }; text-align:center; ">
                                 <button class="btn btn-primary btn-sm" onclick="window.editContractor('${tenderKey}','${contractorKey}')"><i class="glyphicon glyphicon-edit"></i> Edit</button><br>
                                 <button class="btn btn-danger btn-sm" onclick="window.deleteContractor('${tenderKey}','${contractorKey}')"><i class="glyphicon glyphicon-trash"></i> Delete</button>
                             </td>
-                            <td ${rowspanAttr} style="${styleCenter}">
+                            <td ${rowspanAttr} style="${styleCenter} display: ${ (userpriv === 'SAU' || userpriv === 'LGL') ? 'table-cell' : 'none' };" class="text-center action-col"
+                            >
                                 <button class="btn btn-success btn-sm" onclick="window.addContractor('${tenderKey}')"><i class="glyphicon glyphicon-plus"></i> Add Contractor</button><br><br>
                                 <button class="btn btn-primary btn-sm" onclick="window.editTender('${tenderKey}')"><i class="glyphicon glyphicon-edit"></i> Edit Tender</button><br><br>
                                 <button class="btn btn-danger btn-sm" onclick="window.deleteTender('${tenderKey}')"><i class="glyphicon glyphicon-trash"></i> Delete Tender</button>
@@ -730,7 +790,7 @@
     });
 
     // ---- HOME ----
-    document.getElementById("home-btn").addEventListener("click", ()=> location.reload());
+    document.getElementById("home-btn").addEventListener("click", ()=> window.location.href = "trphqhome.html");
 
     // ---- SEARCH ----
     document.getElementById("searchInput").addEventListener("keyup", renderTable);
@@ -740,4 +800,3 @@
 </script>
 </body>
 </html>
-
