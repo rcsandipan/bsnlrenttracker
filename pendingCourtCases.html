@@ -549,7 +549,7 @@
             //<td>${escapeHTML(caseData.DateHearing)}</td>
 
             html += `
-                <tr>
+                <tr class="${dateClass}">
                     <td class="text-center">${index + 1}</td>
                     <td>${escapeHTML(caseData.limbsID)}</td>
                     <td>${escapeHTML(caseData.caseNo)}</td>
@@ -560,7 +560,7 @@
                     <td>${escapeHTML(caseData.advocate)}</td>
                     <td class="text-right">${escapeHTML(caseData.amountInvolved)}</td>
                     <td>${escapeHTML(caseData.previousDate)}</td>
-                    <td class="${dateClass}">${escapeHTML(caseData.nextDate)}</td>
+                    <td >${escapeHTML(caseData.nextDate)}</td>
                     <td class="status-cell">${escapeHTML(caseData.presentStatus)}</td>
                     
                     <td>${escapeHTML(caseData.acts)}</td>

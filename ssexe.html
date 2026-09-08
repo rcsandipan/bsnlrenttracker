@@ -487,13 +487,13 @@ console.log(todayDate);
 document.getElementById("currentDate").innerText= todayDate;
 
 function initializeDesignationDropdown(){
-const select=document.getElementById("empDesignation");
-select.innerHTML='<option value="">Select Designation</option>';
+const selectDesig=document.getElementById("empDesignation");
+selectDesig.innerHTML='<option value="">Select Designation</option>';
 DESIGNATIONS.forEach(designation=>{
 const option=document.createElement("option");
 option.value=designation;
 option.textContent=designation;
-select.appendChild(option);
+selectDesig.appendChild(option);
 });
 }
 
@@ -580,7 +580,7 @@ try{
 
 if(firebaseKey){
 
-await update(ref(db,"employees/"+firebaseKey),employeeData);
+await update(ref(db,"ssjtosde/"+firebaseKey),employeeData);
 $("#employeeModal").modal("hide");
 
 await Swal.fire({icon:"success",title:"Updated",text:"Employee details updated successfully.",timer:1600,showConfirmButton:false});
@@ -630,7 +630,7 @@ if(!result.isConfirmed)return;
 
 try{
 
-await remove(ref(db,"employees/"+firebaseKey));
+await remove(ref(db,"ssjtosde/"+firebaseKey));
 
 await Swal.fire({icon:"success",title:"Deleted",text:"Employee deleted successfully.",timer:1600,showConfirmButton:false});
 
@@ -687,7 +687,7 @@ const designations=[...new Set(allEmployees.map(emp=>emp.designation).filter(Boo
 select.innerHTML='<option value="ALL">All Designations</option>';
 
 designations.forEach(designation=>{
-const option=document.createElement("option");
+const option = document.createElement("option");
 option.value=designation;
 option.textContent=designation;
 select.appendChild(option);
@@ -1044,22 +1044,6 @@ function calculateTenure(dateString) {
     return `${yearStr} ${monthStr} ${dayStr}`.trim();
 }
 
-// function calculateAge(dateString){
-
-// const dob=getDate(dateString);
-
-// if(isNaN(dob.getTime()))return"N/A";
-
-// const today=new Date(todayDate);
-
-// let age=today.getFullYear()-dob.getFullYear();
-// const month=today.getMonth()-dob.getMonth();
-
-// if(month<0||(month===0&&today.getDate()<dob.getDate()))age--;
-
-// return age;
-
-// }
 
 function calculateAge(dateString) {
     // Parse the date of birth from DD-MM-YYYY format
