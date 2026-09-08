@@ -485,7 +485,7 @@ if (revdate) {
     revdate = `${parts[2]}-${parts[1]}-${parts[0]}`;
 }
 
-      const appsScriptUrl = "https://script.google.com/macros/s/AKfycbyChHcZ12eCuR2qbujMPA2M7mkH6eG3jWuyiElcFXkgbXTVMTj2tEWco4aBBocqtsnF/exec";
+      const appsScriptUrl = "https://script.google.com/macros/s/AKfycby9asYLQ9DczJFT5SJej-bT-LHkyp4hRFghi1RA3RgznmBOY182IiN__v6qNCxuffQ3/exec";
 
   Swal.fire({
     title: 'Edit Entry',
@@ -578,7 +578,7 @@ if (revdate) {
      
 
 //console.log(JSON.stringify(data));
-        await update(ref(db, `btslist/${key}`), {
+        await update(ref(db, `nbsnlbtslist/${key}`), {
            name: name,
 	       location: location,
 	       monthlyrent: monthlyrent,
@@ -640,7 +640,7 @@ document.getElementById("searchInput").addEventListener("keyup", function(){
 
 btnAddEntry.addEventListener("click", async () => {
 
-    const appsScriptUrl = "https://script.google.com/macros/s/AKfycbyChHcZ12eCuR2qbujMPA2M7mkH6eG3jWuyiElcFXkgbXTVMTj2tEWco4aBBocqtsnF/exec";
+    const appsScriptUrl = "https://script.google.com/macros/s/AKfycby9asYLQ9DczJFT5SJej-bT-LHkyp4hRFghi1RA3RgznmBOY182IiN__v6qNCxuffQ3/exec";
     const result = await Swal.fire({
         title: "Add New Entry",
         width: "480px",
@@ -737,7 +737,7 @@ btnAddEntry.addEventListener("click", async () => {
 
       try {
 
-        const dbRef = ref(db, "btslist/" + key);
+        const dbRef = ref(db, "nbsnlbtslist/" + key);
             const snapshot = await get(dbRef);
 
             if (snapshot.exists()) {
