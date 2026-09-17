@@ -57,7 +57,7 @@
 
   <div style="margin:15px 0">
     <button class="btn btn-primary" id="exportBtn">📊 Export Filtered Data</button>
-    <button class="btn btn-primary" id="addBtn" style="margin-left:20px">➕ Add New Entry</button>
+    <button class="btn btn-primary" id="addBtn" style="margin-left:20px; display:none">➕ Add New Entry</button>
   </div>
 
   <div class="table-container">
@@ -75,13 +75,14 @@
   const userpriv = sessionStorage.getItem("userpriv");
     console.log(userpriv);
     const actionHeader = document.getElementById('thaction');
-   
+    const addBtn = document.getElementById('addBtn');
     if (userpriv === 'SAU' || userpriv === 'LM') {
         actionHeader.style.display = 'table-cell';
+        addBtn.style.display = 'table-cell';
    
     } else {
         actionHeader.style.display = 'none';
-    
+        addBtn.style.display = 'none';
     } 
 
   import { getDatabase, ref, onValue, get, set, update } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";

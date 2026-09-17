@@ -86,7 +86,7 @@
     <button class="btn btn-primary" id="exportBtn" >
     📊 Export to Excel
 </button> 
-<button class="btn btn-primary" id="addBtn" style="margin-left: 50px;">
+<button class="btn btn-primary" id="addBtn" style="margin-left: 50px; display:none;">
     ➕ Add New Entry
 </button>
 </div>
@@ -138,13 +138,13 @@
     const userpriv = sessionStorage.getItem("userpriv");
     console.log(userpriv);
     const actionHeader = document.getElementById('thaction');
-   
+    const addBtn = document.getElementById('addBtn');
     if (userpriv === 'SAU' || userpriv === 'LM') {
         actionHeader.style.display = 'table-cell';
-   
+        addBtn.style.display = 'table-cell';
     } else {
         actionHeader.style.display = 'none';
-    
+        addBtn.style.display = 'none';
     } 
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
@@ -754,4 +754,3 @@ document.getElementById("exportBtn").addEventListener("click", function () {
     </script>
 </body>
 </html>
-

@@ -78,7 +78,7 @@
         <input type="text" id="searchInput" class="form-control" placeholder="🔍 Search keywords (Tender, Vendor, Code...)">
         <div style="display: flex; gap: 12px;">
             <button class="btn btn-primary" id="exportBtn">📊 Export Excel</button>
-            <button class="btn btn-success" id="addBtn">➕ Add New Entry</button>
+            <button id="addBtn" style="display: none;" class="btn btn-success" id="addBtn">➕ Add New Entry</button>
         </div>
     </div>
 
@@ -123,12 +123,15 @@
     console.log(userpriv);
     const actionHeader1 = document.getElementById('thaction1');
     const actionHeader2 = document.getElementById('thaction2');
+    const addBtn = document.getElementById('addBtn');
     if (userpriv === 'SAU' || userpriv === 'ADN') {
         actionHeader1.style.display = 'table-cell';
         actionHeader2.style.display = 'table-cell';
+        addBtn.style.display = 'table-cell';
     } else {
         actionHeader1.style.display = 'none';
         actionHeader2.style.display = 'none';
+        addBtn.style.display = 'none';
     }
     // ---- Firebase imports ----
   

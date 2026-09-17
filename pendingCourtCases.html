@@ -209,7 +209,7 @@
 
         <div class="toolbar">
 
-            <button class="btn btn-primary" onclick="openAddCase()">
+            <button class="btn btn-primary" onclick="openAddCase()" id="addBtn" style="display: none;">
                 <span class="glyphicon glyphicon-plus"></span>
                 Add Case
             </button>
@@ -308,10 +308,14 @@
     const userpriv = sessionStorage.getItem("userpriv");
     console.log(userpriv);
     const actionHeader = document.getElementById('thaction');
+    const addBtn = document.getElementById('addBtn');
+
     if (userpriv === 'SAU' || userpriv === 'LGL') {
         actionHeader.style.display = 'table-cell';
+        addBtn.style.display = 'table-cell';
     } else {
         actionHeader.style.display = 'none';
+        addBtn.style.display = 'none';
     }
 
     import { initializeApp }
