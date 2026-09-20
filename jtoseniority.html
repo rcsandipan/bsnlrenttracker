@@ -1,0 +1,1085 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>JTO Seniority List • Firebase</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-database-compat.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+
+<style>
+*{box-sizing:border-box;font-family:'Segoe UI',Roboto,system-ui,sans-serif}
+body{background:#f0f4fa;margin:0;padding:20px;display:flex;justify-content:center}
+.container{max-width:1500px;width:100%;background:#fff;border-radius:28px;padding:28px 24px 32px;box-shadow:0 20px 40px -12px rgba(0,20,30,.25)}
+h1{font-size:1.8rem;font-weight:600;color:#0b2b4b;margin:0 0 6px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.badge{background:linear-gradient(145deg,#1a5f8a,#135072);color:#fff;font-size:.75rem;font-weight:500;padding:5px 14px;border-radius:40px;letter-spacing:.3px}
+.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin:16px 0 20px}
+.search-box{display:flex;align-items:center;background:#fff;border:1.5px solid #cddceb;border-radius:40px;padding:4px 6px 4px 18px;flex:1 1 300px;max-width:420px;box-shadow:0 2px 6px rgba(0,0,0,.02)}
+.search-box:focus-within{border-color:#1e6f9f;box-shadow:0 4px 12px rgba(30,111,159,.15)}
+.search-box i{color:#6b8ba5;font-size:1rem}
+.search-box input{border:none;padding:10px 12px;font-size:.9rem;width:100%;outline:none;background:transparent}
+.btn{border:none;padding:10px 20px;border-radius:40px;font-weight:600;font-size:.85rem;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:.15s;background:#fff;border:1.5px solid #cddceb;color:#1d3f5c;box-shadow:0 2px 6px rgba(0,0,0,.02)}
+.btn-primary{background:#1e6f9f;border-color:#1e6f9f;color:#fff}
+.btn-primary:hover{background:#165f8a;border-color:#165f8a}
+.btn-success{background:#1e7e5c;border-color:#1e7e5c;color:#fff}
+.btn-success:hover{background:#166b4d}
+.btn-outline:hover{background:#e6f0f9;border-color:#9bb7cf}
+.table-wrapper{overflow-x:auto;border-radius:18px;border:1px solid #d9e4ed;background:#fff;margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:.82rem;min-width:1350px;white-space:nowrap}
+th{background:#1b3b55;color:#fff;font-weight:600;font-size:.72rem;letter-spacing:.4px;text-transform:uppercase;padding:14px 10px;text-align:left;border-right:1px solid #2e5470;white-space:nowrap}
+th:last-child{border-right:none}
+td{padding:10px;border-bottom:1px solid #e5eef6;color:#183b4e;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#f2f9ff}
+.rank-highlight{background:#e7f0fa;font-weight:700;color:#004b7a;text-align:center}
+.rank-badge{display:inline-block;background:linear-gradient(135deg,#1f6e9c,#0e4b70);color:#fff;font-weight:700;font-size:.75rem;padding:3px 10px;border-radius:30px;min-width:40px;text-align:center;box-shadow:0 2px 5px rgba(0,0,0,.1)}
+.action-btn{border:none;background:transparent;padding:5px 8px;border-radius:8px;cursor:pointer;font-size:.9rem;transition:.1s;color:#4a6f8a}
+.action-btn:hover{background:#e2eef9;color:#004b7a}
+.action-btn.edit:hover{color:#1e6f9f;background:#e2f0fa}
+.action-btn.delete:hover{color:#b13e3e;background:#fceaea}
+.footer-note{margin-top:18px;font-size:.78rem;color:#5f7d94;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.rule{background:#edf4fa;padding:6px 16px;border-radius:30px;font-weight:500}
+.empty-row td{text-align:center;padding:40px;color:#7a9bb5;font-style:italic}
+
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,20,30,.4);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;visibility:hidden;opacity:0;transition:.2s}
+.modal-overlay.active{visibility:visible;opacity:1}
+.modal{background:#fff;border-radius:28px;max-width:620px;width:100%;padding:28px 26px;box-shadow:0 30px 60px -15px rgba(0,0,0,.35);max-height:90vh;overflow-y:auto}
+.modal h2{margin:0 0 20px;font-size:1.5rem;color:#0b2b4b;display:flex;justify-content:space-between;align-items:center}
+.modal-close{background:none;border:none;font-size:1.8rem;cursor:pointer;color:#8aa9c2;line-height:1}
+.modal-close:hover{color:#b13e3e}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px}
+.form-grid .full-width{grid-column:span 2}
+.form-grid label{font-size:.75rem;font-weight:600;color:#2d4f6a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.2px}
+.form-grid input{width:100%;padding:10px 14px;border:1.5px solid #d9e4ed;border-radius:14px;font-size:.9rem;outline:none;transition:.15s}
+.form-grid input:focus{border-color:#1e6f9f;box-shadow:0 0 0 3px rgba(30,111,159,.1)}
+.modal-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}
+.modal-actions .btn{padding:12px 28px}
+
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(80px);background:#1b3b55;color:#fff;padding:14px 28px;border-radius:60px;font-weight:500;font-size:.9rem;box-shadow:0 12px 30px rgba(0,0,0,.3);opacity:0;transition:.3s;z-index:2000;pointer-events:none;max-width:90%}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.error{background:#a13030}
+.toast.success{background:#1e7e5c}
+
+@media(max-width:650px){
+    body{padding:8px}
+    .container{padding:20px 12px}
+    .form-grid{grid-template-columns:1fr}
+    .form-grid .full-width{grid-column:span 1}
+    h1{font-size:1.4rem}
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>
+<i class="fas fa-users" style="color:#1e6f9f"></i>
+JTO Seniority List
+
+</h1>
+
+<div class="toolbar">
+
+<div class="search-box">
+<i class="fas fa-search"></i>
+<input type="text" id="searchInput" placeholder="Search by name, perNo,vacancy year...">
+</div>
+
+<div style="display:flex;gap:10px;flex-wrap:wrap">
+
+<button class="btn btn-primary" id="homeBtn" >
+<i class="fas fa-home"></i> HOME
+</button>
+
+<button class="btn btn-primary" id="addStaffBtn" style="display: none;">
+<i class="fas fa-plus-circle"></i> Add Staff
+</button>
+
+<button class="btn btn-success" id="exportExcelBtn">
+<i class="fas fa-file-excel"></i> Export to Excel
+</button>
+</div>
+
+</div>
+
+<div class="table-wrapper">
+<table id="officerTable">
+
+<thead>
+<tr>
+<th>Seniority</th>
+<th>perNo</th>
+<th>Name</th>
+<th>DOJ</th>
+<th>Rec Year</th>
+<th>DOB</th>
+<th>Marks</th>
+<th>Vacancy Year</th>
+<th style="text-align:center; display:none" id="thaction">Actions</th>
+</tr>
+</thead>
+
+<tbody id="tableBody">
+<tr class="empty-row">
+<td colspan="9">
+<i class="fas fa-spinner fa-pulse"></i>
+Loading data ...
+</td>
+</tr>
+</tbody>
+
+</table>
+</div>
+
+<div class="footer-note">
+
+<span class="rule">
+<i class="fas fa-sort-amount-down"></i>
+Sort: vacancyYear ↑ → marks ↓ → DOB (oldest first)
+</span>
+
+<span>
+Total officers: <strong id="countDisplay">0</strong>
+</span>
+
+</div>
+</div>
+
+
+<!-- ADD / EDIT MODAL -->
+
+<div class="modal-overlay" id="modalOverlay">
+
+<div class="modal">
+
+<h2>
+<span id="modalTitle">Add Staff</span>
+<button class="modal-close" id="modalCloseBtn">&times;</button>
+</h2>
+
+<form id="staffForm">
+
+<input type="hidden" id="formDocId">
+
+<div class="form-grid">
+
+<div>
+<label>perNo *</label>
+<input type="text" id="form_perNo" required placeholder="e.g. 00101234">
+</div>
+
+<div>
+<label>Name *</label>
+<input type="text" id="form_name" required placeholder="Full name">
+</div>
+
+<div>
+<label>DOJ (DD-MM-YYYY)</label>
+<input type="text" id="form_doj" placeholder="DD-MM-YYYY">
+</div>
+
+<div>
+<label>Rec Year</label>
+<input type="text" id="form_recYear" placeholder="YYYY">
+</div>
+
+<div>
+<label>DOB (DD-MM-YYYY)</label>
+<input type="text" id="form_dob" placeholder="DD-MM-YYYY">
+</div>
+
+<div>
+<label>Marks</label>
+<input type="number" step="0.01" id="form_marks" placeholder="XX.XX">
+</div>
+
+<div class="full-width">
+<label>Vacancy Year</label>
+<input type="text" id="form_vacancyYear" placeholder="20XX-YY">
+</div>
+
+</div>
+
+<div class="modal-actions">
+
+<button type="button" class="btn btn-outline" id="modalCancelBtn">
+Cancel
+</button>
+
+<button type="submit" class="btn btn-primary" id="modalSaveBtn">
+<i class="fas fa-save"></i> Save
+</button>
+
+</div>
+
+</form>
+
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+
+<script type="module">
+
+ const userpriv = sessionStorage.getItem("userpriv");
+    console.log(userpriv);
+    const actionHeader = document.getElementById('thaction');
+    const addStaffBtn = document.getElementById('addStaffBtn');
+    
+    if (userpriv === 'SAU' || userpriv === 'ADN') {
+        actionHeader.style.display = 'table-cell';
+        addStaffBtn.style.display = 'table-cell'
+        
+    } else {
+        actionHeader.style.display = 'none';
+        addStaffBtn.style.display = 'none';
+     
+    }
+
+
+/* ============================================================
+   FIREBASE
+   ============================================================ */
+
+import{
+    getDatabase,
+    ref,
+    onValue,
+    set,
+    update,
+    remove
+}from"https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+
+import{app} from"./firebase-config.js";
+
+const db=getDatabase(app);
+const COLLECTION="jtoseniority";
+
+
+/* ============================================================
+   GLOBAL VARIABLES
+   ============================================================ */
+
+let allOfficers=[];
+let rankedOfficers=[];
+let filteredOfficers=[];
+
+
+/* ============================================================
+   DOM
+   ============================================================ */
+
+const tableBody=document.getElementById("tableBody");
+const countDisplay=document.getElementById("countDisplay");
+const searchInput=document.getElementById("searchInput");
+const modalOverlay=document.getElementById("modalOverlay");
+const modalTitle=document.getElementById("modalTitle");
+const staffForm=document.getElementById("staffForm");
+const formDocId=document.getElementById("formDocId");
+
+
+/* ============================================================
+   DATE
+   ============================================================ */
+
+function parseDate(dateStr){
+
+    if(!dateStr)return null;
+
+    const parts=String(dateStr).split("-");
+
+    if(parts.length!==3)return null;
+
+    const day=parseInt(parts[0],10);
+    const month=parseInt(parts[1],10)-1;
+    const year=parseInt(parts[2],10);
+
+    const d=new Date(year,month,day);
+
+    return isNaN(d.getTime())?null:d;
+}
+
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+
+function showToast(message,type="info"){
+
+    const toast=document.getElementById("toast");
+
+    toast.textContent=message;
+    toast.className="toast "+type;
+    toast.classList.add("show");
+
+    clearTimeout(toast._timeout);
+
+    toast._timeout=setTimeout(()=>{
+        toast.classList.remove("show");
+    },3200);
+}
+
+
+/* ============================================================
+   SORT + RANK
+   ============================================================ */
+
+function computeRanks(officers){
+
+    const items=officers.map(row=>{
+
+        const marks=parseFloat(row.marks)||0;
+
+        const dobDate=
+            parseDate(row.dob)||
+            new Date(1900,0,1);
+
+        const vacancyYear=
+            row.vacancyYear?
+            String(row.vacancyYear).trim():
+            "9999-99";
+
+        return{
+            ...row,
+            _marksNum:marks,
+            _dobDate:dobDate,
+            _vacSortKey:vacancyYear
+        };
+
+    });
+
+    items.sort((a,b)=>{
+
+        /* Vacancy Year ascending */
+
+        if(a._vacSortKey!==b._vacSortKey){
+
+            return a._vacSortKey.localeCompare(
+                b._vacSortKey,
+                undefined,
+                {numeric:true}
+            );
+
+        }
+
+        /* Marks descending */
+
+        if(a._marksNum!==b._marksNum){
+
+            return b._marksNum-a._marksNum;
+
+        }
+
+        /* DOB oldest first */
+
+        return a._dobDate-b._dobDate;
+
+    });
+
+    items.forEach((item,index)=>{
+        item.seniorityRank=index+1;
+    });
+
+    return items;
+}
+
+
+/* ============================================================
+   RENDER TABLE
+   ============================================================ */
+
+function renderTable(){
+
+    const query=
+        searchInput.value.trim().toLowerCase();
+
+    if(query){
+
+        filteredOfficers=
+            rankedOfficers.filter(o=>{
+
+                const haystack=[
+                    o.perNo,
+                    o.name,
+                    o.doj,
+                    o.recYear,
+                    o.dob,
+                    o.marks,
+                    o.vacancyYear
+                ]
+                .map(v=>String(v??"").toLowerCase())
+                .join(" ");
+
+                return haystack.includes(query);
+
+            });
+
+    }else{
+
+        filteredOfficers=[
+            ...rankedOfficers
+        ];
+
+    }
+
+
+    if(!filteredOfficers.length){
+
+        tableBody.innerHTML=`
+        <tr class="empty-row">
+            <td colspan="9">
+                <i class="fas fa-search"></i>
+                No matching officers found
+            </td>
+        </tr>`;
+
+        countDisplay.textContent="0";
+
+        return;
+    }
+
+
+    tableBody.innerHTML=
+        filteredOfficers.map(o=>`
+
+        <tr>
+
+            <td class="rank-highlight">
+                <span class="rank-badge">
+                    ${o.seniorityRank}
+                </span>
+            </td>
+
+            <td>${o.perNo||""}</td>
+
+            <td>${o.name||""}</td>
+
+            <td>${o.doj||""}</td>
+
+            <td>${o.recYear||""}</td>
+
+            <td>${o.dob||""}</td>
+
+            <td>${o.marks??""}</td>
+
+            <td>${o.vacancyYear||""}</td>
+
+            <td style="text-align:center;white-space:nowrap; display: ${ (userpriv === 'SAU' || userpriv === 'ADN') ? 'table-cell' : 'none' };">
+
+                <button
+                    class="action-btn edit"
+                    data-id="${o._firebaseId}"
+                    title="Edit">
+
+                    <i class="fas fa-edit"></i>
+
+                </button>
+
+                <button
+                    class="action-btn delete"
+                    data-id="${o._firebaseId}"
+                    title="Delete">
+
+                    <i class="fas fa-trash-alt"></i>
+
+                </button>
+
+            </td>
+
+        </tr>
+
+        `).join("");
+
+
+    countDisplay.textContent=
+        filteredOfficers.length;
+
+
+    document
+        .querySelectorAll(".action-btn.edit")
+        .forEach(btn=>{
+
+            btn.addEventListener("click",()=>{
+                openEditModal(btn.dataset.id);
+            });
+
+        });
+
+
+    document
+        .querySelectorAll(".action-btn.delete")
+        .forEach(btn=>{
+
+            btn.addEventListener("click",()=>{
+                deleteOfficer(btn.dataset.id);
+            });
+
+        });
+
+}
+
+
+/* ============================================================
+   FIREBASE LISTENER
+   ============================================================ */
+
+function startFirebaseListener(){
+
+    const dbRef=ref(db,COLLECTION);
+
+    onValue(dbRef,snapshot=>{
+
+        const data=snapshot.val();
+        allOfficers=[];
+
+        if(data){
+            Object.entries(data).forEach(([perNo,record])=>{
+
+                if(!record||typeof record!=="object")return;
+
+                allOfficers.push({
+                    ...record,
+                    perNo:record.perNo||perNo,
+                    _firebaseId:perNo
+                });
+
+            });
+        }
+
+        console.log("Firebase data loaded:",allOfficers);
+
+        rankedOfficers=computeRanks(allOfficers);
+        renderTable();
+
+    },error=>{
+
+        console.error("Firebase read error:",error);
+
+        showToast(
+            "Error reading data: "+error.message,
+            "error"
+        );
+
+        tableBody.innerHTML=`
+            <tr class="empty-row">
+                <td colspan="9">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Failed to load data: ${error.message}
+                </td>
+            </tr>`;
+
+    });
+}
+
+/* ============================================================
+   ADD MODAL
+   ============================================================ */
+
+function openAddModal(){
+
+    modalTitle.textContent="Add Staff";
+
+    formDocId.value="";
+
+    staffForm.reset();
+
+    document.getElementById("form_perNo").disabled=false;
+
+    modalOverlay.classList.add("active");
+
+}
+
+
+/* ============================================================
+   EDIT MODAL
+   ============================================================ */
+
+function openEditModal(firebaseId){
+
+    const officer=
+        allOfficers.find(
+            o=>o._firebaseId===firebaseId
+        );
+
+    if(!officer)return;
+
+
+    modalTitle.textContent="Edit Staff";
+
+
+    /*
+       Store the Firebase key.
+
+       Since perNo is the key,
+       this will be the perNo.
+    */
+
+    formDocId.value=
+        officer._firebaseId;
+
+
+    document.getElementById(
+        "form_perNo"
+    ).value=
+        officer.perNo||
+        officer._firebaseId||
+        "";
+
+
+    /*
+       Do not allow changing perNo during edit.
+
+       Changing it would actually mean
+       moving the Firebase record to another key.
+    */
+
+    document.getElementById(
+        "form_perNo"
+    ).disabled=true;
+
+
+    document.getElementById(
+        "form_name"
+    ).value=
+        officer.name||"";
+
+
+    document.getElementById(
+        "form_doj"
+    ).value=
+        officer.doj||"";
+
+
+    document.getElementById(
+        "form_recYear"
+    ).value=
+        officer.recYear||"";
+
+
+    document.getElementById(
+        "form_dob"
+    ).value=
+        officer.dob||"";
+
+
+    document.getElementById(
+        "form_marks"
+    ).value=
+        officer.marks??"";
+
+
+    document.getElementById(
+        "form_vacancyYear"
+    ).value=
+        officer.vacancyYear||"";
+
+
+    modalOverlay.classList.add("active");
+
+}
+
+
+/* ============================================================
+   CLOSE MODAL
+   ============================================================ */
+
+function closeModal(){
+
+    modalOverlay.classList.remove(
+        "active"
+    );
+
+    document.getElementById(
+        "form_perNo"
+    ).disabled=false;
+
+}
+
+
+/* ============================================================
+   SAVE
+   ============================================================ */
+
+staffForm.addEventListener(
+    "submit",
+    async e=>{
+
+        e.preventDefault();
+
+
+        const perNo=
+            document.getElementById(
+                "form_perNo"
+            ).value.trim();
+
+
+        const payload={
+
+            perNo:perNo,
+
+            name:
+                document.getElementById(
+                    "form_name"
+                ).value.trim(),
+
+            doj:
+                document.getElementById(
+                    "form_doj"
+                ).value.trim(),
+
+            recYear:
+                document.getElementById(
+                    "form_recYear"
+                ).value.trim(),
+
+            dob:
+                document.getElementById(
+                    "form_dob"
+                ).value.trim(),
+
+            marks:
+                document.getElementById(
+                    "form_marks"
+                ).value.trim(),
+
+            vacancyYear:
+                document.getElementById(
+                    "form_vacancyYear"
+                ).value.trim()
+
+        };
+
+
+        if(!perNo){
+
+            showToast(
+                "perNo is required",
+                "error"
+            );
+
+            return;
+
+        }
+
+
+        if(!payload.name){
+
+            showToast(
+                "Name is required",
+                "error"
+            );
+
+            return;
+
+        }
+
+
+        try{
+
+            const firebaseId=
+                formDocId.value;
+
+
+            if(firebaseId){
+
+                /*
+                   EDIT
+
+                   Firebase path:
+
+                   jtoseniority/perNo
+                */
+
+                await update(
+                    ref(
+                        db,
+                        `${COLLECTION}/${firebaseId}`
+                    ),
+                    payload
+                );
+
+
+                showToast(
+                    "Staff updated successfully",
+                    "success"
+                );
+
+            }else{
+
+                /*
+                   ADD
+
+                   IMPORTANT:
+                   perNo becomes the Firebase key.
+
+                   No push() is used.
+                */
+
+                await set(
+                    ref(
+                        db,
+                        `${COLLECTION}/${perNo}`
+                    ),
+                    payload
+                );
+
+
+                showToast(
+                    "Staff added successfully",
+                    "success"
+                );
+
+            }
+
+
+            closeModal();
+
+        }catch(error){
+
+            console.error(
+                "Save error:",
+                error
+            );
+
+            showToast(
+                "Error saving: "+
+                error.message,
+                "error"
+            );
+
+        }
+
+    }
+);
+
+
+/* ============================================================
+   DELETE
+   ============================================================ */
+
+async function deleteOfficer(firebaseId){
+
+    const officer=
+        allOfficers.find(
+            o=>o._firebaseId===firebaseId
+        );
+
+    if(!officer)return;
+
+
+    const name=
+        officer.name||
+        officer.perNo||
+        firebaseId;
+
+
+    if(!confirm(
+        `Delete "${name}"?\n\nThis cannot be undone.`
+    )){
+        return;
+    }
+
+
+    try{
+
+        await remove(
+            ref(
+                db,
+                `${COLLECTION}/${firebaseId}`
+            )
+        );
+
+
+        showToast(
+            "Officer deleted",
+            "success"
+        );
+
+
+    }catch(error){
+
+        console.error(
+            "Delete error:",
+            error
+        );
+
+        showToast(
+            "Error deleting: "+
+            error.message,
+            "error"
+        );
+
+    }
+
+}
+
+
+/* ============================================================
+   EXCEL EXPORT
+   ============================================================ */
+
+document
+.getElementById("exportExcelBtn")
+.addEventListener("click",()=>{
+
+    if(!filteredOfficers.length){
+
+        showToast(
+            "No data to export",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    const exportData=
+        filteredOfficers.map(o=>({
+
+            "Seniority Rank":
+                o.seniorityRank,
+
+            "perNo":
+                o.perNo||"",
+
+            "Name":
+                o.name||"",
+
+            "DOJ":
+                o.doj||"",
+
+            "Rec Year":
+                o.recYear||"",
+
+            "DOB":
+                o.dob||"",
+
+            "Marks":
+                o.marks??"",
+
+            "Vacancy Year":
+                o.vacancyYear||""
+
+        }));
+
+
+    const ws=
+        XLSX.utils.json_to_sheet(
+            exportData
+        );
+
+
+    ws["!cols"]=[
+
+        {wch:15},
+        {wch:15},
+        {wch:30},
+        {wch:15},
+        {wch:12},
+        {wch:15},
+        {wch:12},
+        {wch:16}
+
+    ];
+
+
+    const wb=
+        XLSX.utils.book_new();
+
+
+    XLSX.utils.book_append_sheet(
+        wb,
+        ws,
+        "JTO_Seniority"
+    );
+
+
+    XLSX.writeFile(
+        wb,
+        `JTO_Seniority_${new Date().toISOString().slice(0,10)}.xlsx`
+    );
+
+
+    showToast(
+        "Excel file downloaded",
+        "success"
+    );
+
+});
+
+
+/* ============================================================
+   SEARCH
+   ============================================================ */
+
+searchInput.addEventListener(
+    "input",
+    renderTable
+);
+/*================
+HOME BUTTON
+================= */
+
+document.getElementById("homeBtn").onclick = function(){
+window.location.href = "trphqhome.html";
+};
+
+/* ============================================================
+   MODAL BUTTONS
+   ============================================================ */
+
+document
+.getElementById("addStaffBtn")
+.addEventListener(
+    "click",
+    openAddModal
+);
+
+
+document
+.getElementById("modalCloseBtn")
+.addEventListener(
+    "click",
+    closeModal
+);
+
+
+document
+.getElementById("modalCancelBtn")
+.addEventListener(
+    "click",
+    closeModal
+);
+
+
+modalOverlay.addEventListener(
+    "click",
+    e=>{
+
+        if(e.target===modalOverlay){
+            closeModal();
+        }
+
+    }
+);
+
+
+/* ============================================================
+   START FIREBASE
+   ============================================================ */
+
+startFirebaseListener();
+
+</script>
+
+</body>
+</html>
+
