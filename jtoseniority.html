@@ -5,7 +5,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>JTO Seniority List • Firebase</title>
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-database-compat.js"></script>
@@ -29,7 +28,7 @@ h1{font-size:1.8rem;font-weight:600;color:#0b2b4b;margin:0 0 6px;display:flex;al
 .btn-success:hover{background:#166b4d}
 .btn-outline:hover{background:#e6f0f9;border-color:#9bb7cf}
 .table-wrapper{overflow-x:auto;border-radius:18px;border:1px solid #d9e4ed;background:#fff;margin-top:8px}
-table{width:100%;border-collapse:collapse;font-size:.82rem;min-width:1350px;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:.82rem;min-width:1450px;white-space:nowrap}
 th{background:#1b3b55;color:#fff;font-weight:600;font-size:.72rem;letter-spacing:.4px;text-transform:uppercase;padding:14px 10px;text-align:left;border-right:1px solid #2e5470;white-space:nowrap}
 th:last-child{border-right:none}
 td{padding:10px;border-bottom:1px solid #e5eef6;color:#183b4e;vertical-align:middle}
@@ -37,6 +36,9 @@ tr:last-child td{border-bottom:none}
 tbody tr:hover{background:#f2f9ff}
 .rank-highlight{background:#e7f0fa;font-weight:700;color:#004b7a;text-align:center}
 .rank-badge{display:inline-block;background:linear-gradient(135deg,#1f6e9c,#0e4b70);color:#fff;font-weight:700;font-size:.75rem;padding:3px 10px;border-radius:30px;min-width:40px;text-align:center;box-shadow:0 2px 5px rgba(0,0,0,.1)}
+.type-badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:.72rem;font-weight:600}
+.type-promoted{background:#e5f4ec;color:#176b43}
+.type-direct{background:#fff0df;color:#a45b00}
 .action-btn{border:none;background:transparent;padding:5px 8px;border-radius:8px;cursor:pointer;font-size:.9rem;transition:.1s;color:#4a6f8a}
 .action-btn:hover{background:#e2eef9;color:#004b7a}
 .action-btn.edit:hover{color:#1e6f9f;background:#e2f0fa}
@@ -44,7 +46,6 @@ tbody tr:hover{background:#f2f9ff}
 .footer-note{margin-top:18px;font-size:.78rem;color:#5f7d94;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
 .rule{background:#edf4fa;padding:6px 16px;border-radius:30px;font-weight:500}
 .empty-row td{text-align:center;padding:40px;color:#7a9bb5;font-style:italic}
-
 .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,20,30,.4);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;visibility:hidden;opacity:0;transition:.2s}
 .modal-overlay.active{visibility:visible;opacity:1}
 .modal{background:#fff;border-radius:28px;max-width:620px;width:100%;padding:28px 26px;box-shadow:0 30px 60px -15px rgba(0,0,0,.35);max-height:90vh;overflow-y:auto}
@@ -54,121 +55,86 @@ tbody tr:hover{background:#f2f9ff}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px}
 .form-grid .full-width{grid-column:span 2}
 .form-grid label{font-size:.75rem;font-weight:600;color:#2d4f6a;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.2px}
-.form-grid input{width:100%;padding:10px 14px;border:1.5px solid #d9e4ed;border-radius:14px;font-size:.9rem;outline:none;transition:.15s}
-.form-grid input:focus{border-color:#1e6f9f;box-shadow:0 0 0 3px rgba(30,111,159,.1)}
+.form-grid input,.form-grid select{width:100%;padding:10px 14px;border:1.5px solid #d9e4ed;border-radius:14px;font-size:.9rem;outline:none;transition:.15s;background:#fff}
+.form-grid input:focus,.form-grid select:focus{border-color:#1e6f9f;box-shadow:0 0 0 3px rgba(30,111,159,.1)}
 .modal-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}
 .modal-actions .btn{padding:12px 28px}
-
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(80px);background:#1b3b55;color:#fff;padding:14px 28px;border-radius:60px;font-weight:500;font-size:.9rem;box-shadow:0 12px 30px rgba(0,0,0,.3);opacity:0;transition:.3s;z-index:2000;pointer-events:none;max-width:90%}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.error{background:#a13030}
 .toast.success{background:#1e7e5c}
-
 @media(max-width:650px){
-    body{padding:8px}
-    .container{padding:20px 12px}
-    .form-grid{grid-template-columns:1fr}
-    .form-grid .full-width{grid-column:span 1}
-    h1{font-size:1.4rem}
+body{padding:8px}
+.container{padding:20px 12px}
+.form-grid{grid-template-columns:1fr}
+.form-grid .full-width{grid-column:span 1}
+h1{font-size:1.4rem}
 }
 </style>
 </head>
 
 <body>
-
 <div class="container">
-
-<h1>
-<i class="fas fa-users" style="color:#1e6f9f"></i>
-JTO Seniority List
-
-</h1>
+<h1><i class="fas fa-users" style="color:#1e6f9f"></i>JTO Seniority List</h1>
 
 <div class="toolbar">
-
 <div class="search-box">
 <i class="fas fa-search"></i>
-<input type="text" id="searchInput" placeholder="Search by name, perNo,vacancy year...">
+<input type="text" id="searchInput" placeholder="Search by name, perNo, rec type, vacancy year...">
 </div>
 
 <div style="display:flex;gap:10px;flex-wrap:wrap">
-
-<button class="btn btn-primary" id="homeBtn" >
-<i class="fas fa-home"></i> HOME
-</button>
-
-<button class="btn btn-primary" id="addStaffBtn" style="display: none;">
-<i class="fas fa-plus-circle"></i> Add Staff
-</button>
-
-<button class="btn btn-success" id="exportExcelBtn">
-<i class="fas fa-file-excel"></i> Export to Excel
-</button>
+<button class="btn btn-primary" id="homeBtn"><i class="fas fa-home"></i> HOME</button>
+<button class="btn btn-primary" id="addStaffBtn" style="display:none"><i class="fas fa-plus-circle"></i> Add Staff</button>
+<button class="btn btn-success" id="exportExcelBtn"><i class="fas fa-file-excel"></i> Export to Excel</button>
 </div>
-
 </div>
 
 <div class="table-wrapper">
 <table id="officerTable">
-
 <thead>
 <tr>
 <th>Seniority</th>
 <th>perNo</th>
 <th>Name</th>
-<th>DOJ</th>
-<th>Rec Year</th>
-<th>DOB</th>
+<th>Date Of Joining</th>
+<th>Recruitment Year</th>
+<th>Recruitment Type</th>
+<th>Date Of Birth</th>
 <th>Marks</th>
 <th>Vacancy Year</th>
-<th style="text-align:center; display:none" id="thaction">Actions</th>
+<th style="text-align:center;display:none" id="thaction">Actions</th>
 </tr>
 </thead>
-
 <tbody id="tableBody">
 <tr class="empty-row">
-<td colspan="9">
-<i class="fas fa-spinner fa-pulse"></i>
-Loading data ...
-</td>
+<td colspan="10"><i class="fas fa-spinner fa-pulse"></i> Loading data ...</td>
 </tr>
 </tbody>
-
 </table>
 </div>
 
 <div class="footer-note">
-
 <span class="rule">
 <i class="fas fa-sort-amount-down"></i>
-Sort: vacancyYear ↑ → marks ↓ → DOB (oldest first)
+Sort: Vacancy Year ↑ → Rec Year ↑ → Promoted/Direct alternately → Marks ↓ → DOB oldest first
 </span>
-
-<span>
-Total officers: <strong id="countDisplay">0</strong>
-</span>
-
+<span>Total officers: <strong id="countDisplay">0</strong></span>
 </div>
 </div>
-
 
 <!-- ADD / EDIT MODAL -->
-
 <div class="modal-overlay" id="modalOverlay">
-
 <div class="modal">
-
 <h2>
 <span id="modalTitle">Add Staff</span>
 <button class="modal-close" id="modalCloseBtn">&times;</button>
 </h2>
 
 <form id="staffForm">
-
 <input type="hidden" id="formDocId">
 
 <div class="form-grid">
-
 <div>
 <label>perNo *</label>
 <input type="text" id="form_perNo" required placeholder="e.g. 00101234">
@@ -190,6 +156,14 @@ Total officers: <strong id="countDisplay">0</strong>
 </div>
 
 <div>
+<label>Rec Type</label>
+<select id="form_recType">
+<option value="promoted">promoted</option>
+<option value="direct-recuited">direct-recuited</option>
+</select>
+</div>
+
+<div>
 <label>DOB (DD-MM-YYYY)</label>
 <input type="text" id="form_dob" placeholder="DD-MM-YYYY">
 </div>
@@ -199,383 +173,205 @@ Total officers: <strong id="countDisplay">0</strong>
 <input type="number" step="0.01" id="form_marks" placeholder="XX.XX">
 </div>
 
-<div class="full-width">
+<div>
 <label>Vacancy Year</label>
 <input type="text" id="form_vacancyYear" placeholder="20XX-YY">
 </div>
-
 </div>
 
 <div class="modal-actions">
-
-<button type="button" class="btn btn-outline" id="modalCancelBtn">
-Cancel
-</button>
-
-<button type="submit" class="btn btn-primary" id="modalSaveBtn">
-<i class="fas fa-save"></i> Save
-</button>
-
+<button type="button" class="btn btn-outline" id="modalCancelBtn">Cancel</button>
+<button type="submit" class="btn btn-primary" id="modalSaveBtn"><i class="fas fa-save"></i> Save</button>
 </div>
-
 </form>
-
 </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
-
 <script type="module">
+const userpriv=sessionStorage.getItem("userpriv"),actionHeader=document.getElementById("thaction"),addStaffBtn=document.getElementById("addStaffBtn");
+if(userpriv==="SAU"||userpriv==="ADN"){actionHeader.style.display="table-cell";addStaffBtn.style.display="inline-flex"}
 
- const userpriv = sessionStorage.getItem("userpriv");
-    console.log(userpriv);
-    const actionHeader = document.getElementById('thaction');
-    const addStaffBtn = document.getElementById('addStaffBtn');
-    
-    if (userpriv === 'SAU' || userpriv === 'ADN') {
-        actionHeader.style.display = 'table-cell';
-        addStaffBtn.style.display = 'table-cell'
-        
-    } else {
-        actionHeader.style.display = 'none';
-        addStaffBtn.style.display = 'none';
-     
-    }
+import{getDatabase,ref,onValue,set,update,remove}from"https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+import{app}from"./firebase-config.js";
 
+const db=getDatabase(app),COLLECTION="jtoseniority";
+let allOfficers=[],rankedOfficers=[],filteredOfficers=[];
 
-/* ============================================================
-   FIREBASE
-   ============================================================ */
-
-import{
-    getDatabase,
-    ref,
-    onValue,
-    set,
-    update,
-    remove
-}from"https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
-
-import{app} from"./firebase-config.js";
-
-const db=getDatabase(app);
-const COLLECTION="jtoseniority";
-
-
-/* ============================================================
-   GLOBAL VARIABLES
-   ============================================================ */
-
-let allOfficers=[];
-let rankedOfficers=[];
-let filteredOfficers=[];
-
-
-/* ============================================================
-   DOM
-   ============================================================ */
-
-const tableBody=document.getElementById("tableBody");
-const countDisplay=document.getElementById("countDisplay");
-const searchInput=document.getElementById("searchInput");
-const modalOverlay=document.getElementById("modalOverlay");
-const modalTitle=document.getElementById("modalTitle");
-const staffForm=document.getElementById("staffForm");
-const formDocId=document.getElementById("formDocId");
-
-
-/* ============================================================
-   DATE
-   ============================================================ */
+const tableBody=document.getElementById("tableBody"),countDisplay=document.getElementById("countDisplay"),searchInput=document.getElementById("searchInput"),modalOverlay=document.getElementById("modalOverlay"),modalTitle=document.getElementById("modalTitle"),staffForm=document.getElementById("staffForm"),formDocId=document.getElementById("formDocId");
 
 function parseDate(dateStr){
-
-    if(!dateStr)return null;
-
-    const parts=String(dateStr).split("-");
-
-    if(parts.length!==3)return null;
-
-    const day=parseInt(parts[0],10);
-    const month=parseInt(parts[1],10)-1;
-    const year=parseInt(parts[2],10);
-
-    const d=new Date(year,month,day);
-
-    return isNaN(d.getTime())?null:d;
+if(!dateStr)return null;
+const p=String(dateStr).split("-");
+if(p.length!==3)return null;
+const d=new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));
+return isNaN(d.getTime())?null:d;
 }
-
-
-/* ============================================================
-   TOAST
-   ============================================================ */
 
 function showToast(message,type="info"){
-
-    const toast=document.getElementById("toast");
-
-    toast.textContent=message;
-    toast.className="toast "+type;
-    toast.classList.add("show");
-
-    clearTimeout(toast._timeout);
-
-    toast._timeout=setTimeout(()=>{
-        toast.classList.remove("show");
-    },3200);
+const toast=document.getElementById("toast");
+toast.textContent=message;
+toast.className="toast "+type;
+toast.classList.add("show");
+clearTimeout(toast._timeout);
+toast._timeout=setTimeout(()=>toast.classList.remove("show"),3200);
 }
-
 
 /* ============================================================
    SORT + RANK
    ============================================================ */
 
-function computeRanks(officers){
-
-    const items=officers.map(row=>{
-
-        const marks=parseFloat(row.marks)||0;
-
-        const dobDate=
-            parseDate(row.dob)||
-            new Date(1900,0,1);
-
-        const vacancyYear=
-            row.vacancyYear?
-            String(row.vacancyYear).trim():
-            "9999-99";
-
-        return{
-            ...row,
-            _marksNum:marks,
-            _dobDate:dobDate,
-            _vacSortKey:vacancyYear
-        };
-
-    });
-
-    items.sort((a,b)=>{
-
-        /* Vacancy Year ascending */
-
-        if(a._vacSortKey!==b._vacSortKey){
-
-            return a._vacSortKey.localeCompare(
-                b._vacSortKey,
-                undefined,
-                {numeric:true}
-            );
-
-        }
-
-        /* Marks descending */
-
-        if(a._marksNum!==b._marksNum){
-
-            return b._marksNum-a._marksNum;
-
-        }
-
-        /* DOB oldest first */
-
-        return a._dobDate-b._dobDate;
-
-    });
-
-    items.forEach((item,index)=>{
-        item.seniorityRank=index+1;
-    });
-
-    return items;
+function prepareOfficer(row){
+return{
+...row,
+_marksNum:parseFloat(row.marks)||0,
+_dobDate:parseDate(row.dob)||new Date(1900,0,1),
+_vacSortKey:row.vacancyYear?String(row.vacancyYear).trim():"9999-99",
+_recYearNum:parseInt(row.recYear)||9999,
+_recType:String(row.recType||"direct-recruited").trim().toLowerCase()
+};
 }
 
+/*
+   For each Vacancy Year + Rec Year:
+   promoted #1
+   direct-recuited #1
+   promoted #2
+   direct-recuited #2
+   ...
+*/
+
+function interleaveRecTypes(items){
+const promoted=items.filter(o=>o._recType==="promoted");
+const direct=items.filter(o=>o._recType==="direct-recruited");
+
+const sortGroup=arr=>arr.sort((a,b)=>{
+if(a._marksNum!==b._marksNum)return b._marksNum-a._marksNum;
+return a._dobDate-b._dobDate;
+});
+
+sortGroup(promoted);
+sortGroup(direct);
+
+const result=[],max=Math.max(promoted.length,direct.length);
+
+for(let i=0;i<max;i++){
+if(promoted[i])result.push(promoted[i]);
+if(direct[i])result.push(direct[i]);
+}
+
+return result;
+}
+
+function computeRanks(officers){
+const items=officers.map(prepareOfficer);
+
+const groups={};
+
+items.forEach(item=>{
+const key=`${item._vacSortKey}|||${item._recYearNum}`;
+(groups[key]??=[]).push(item);
+});
+
+const groupKeys=Object.keys(groups).sort((a,b)=>{
+const [av,ay]=a.split("|||"),[bv,by]=b.split("|||");
+const vc=av.localeCompare(bv,undefined,{numeric:true});
+return vc||Number(ay)-Number(by);
+});
+
+const sorted=[];
+
+groupKeys.forEach(key=>{
+const group=groups[key];
+const promoted=group.filter(o=>o._recType==="promoted");
+const direct=group.filter(o=>o._recType==="direct-recruited");
+const unknown=group.filter(o=>o._recType!=="promoted"&&o._recType!=="direct-recruited");
+
+const ordered=interleaveRecTypes([...promoted,...direct]);
+
+/* Records with an unexpected/missing recType are placed after
+   the valid promoted/direct-recuited sequence. */
+unknown.sort((a,b)=>{
+if(a._marksNum!==b._marksNum)return b._marksNum-a._marksNum;
+return a._dobDate-b._dobDate;
+});
+
+sorted.push(...ordered,...unknown);
+});
+
+sorted.forEach((item,index)=>item.seniorityRank=index+1);
+return sorted;
+}
 
 /* ============================================================
    RENDER TABLE
    ============================================================ */
 
 function renderTable(){
+const query=searchInput.value.trim().toLowerCase();
 
-    const query=
-        searchInput.value.trim().toLowerCase();
+filteredOfficers=query?rankedOfficers.filter(o=>{
+const haystack=[o.perNo,o.name,o.doj,o.recYear,o.recType,o.dob,o.marks,o.vacancyYear].map(v=>String(v??"").toLowerCase()).join(" ");
+return haystack.includes(query);
+}):[...rankedOfficers];
 
-    if(query){
-
-        filteredOfficers=
-            rankedOfficers.filter(o=>{
-
-                const haystack=[
-                    o.perNo,
-                    o.name,
-                    o.doj,
-                    o.recYear,
-                    o.dob,
-                    o.marks,
-                    o.vacancyYear
-                ]
-                .map(v=>String(v??"").toLowerCase())
-                .join(" ");
-
-                return haystack.includes(query);
-
-            });
-
-    }else{
-
-        filteredOfficers=[
-            ...rankedOfficers
-        ];
-
-    }
-
-
-    if(!filteredOfficers.length){
-
-        tableBody.innerHTML=`
-        <tr class="empty-row">
-            <td colspan="9">
-                <i class="fas fa-search"></i>
-                No matching officers found
-            </td>
-        </tr>`;
-
-        countDisplay.textContent="0";
-
-        return;
-    }
-
-
-    tableBody.innerHTML=
-        filteredOfficers.map(o=>`
-
-        <tr>
-
-            <td class="rank-highlight">
-                <span class="rank-badge">
-                    ${o.seniorityRank}
-                </span>
-            </td>
-
-            <td>${o.perNo||""}</td>
-
-            <td>${o.name||""}</td>
-
-            <td>${o.doj||""}</td>
-
-            <td>${o.recYear||""}</td>
-
-            <td>${o.dob||""}</td>
-
-            <td>${o.marks??""}</td>
-
-            <td>${o.vacancyYear||""}</td>
-
-            <td style="text-align:center;white-space:nowrap; display: ${ (userpriv === 'SAU' || userpriv === 'ADN') ? 'table-cell' : 'none' };">
-
-                <button
-                    class="action-btn edit"
-                    data-id="${o._firebaseId}"
-                    title="Edit">
-
-                    <i class="fas fa-edit"></i>
-
-                </button>
-
-                <button
-                    class="action-btn delete"
-                    data-id="${o._firebaseId}"
-                    title="Delete">
-
-                    <i class="fas fa-trash-alt"></i>
-
-                </button>
-
-            </td>
-
-        </tr>
-
-        `).join("");
-
-
-    countDisplay.textContent=
-        filteredOfficers.length;
-
-
-    document
-        .querySelectorAll(".action-btn.edit")
-        .forEach(btn=>{
-
-            btn.addEventListener("click",()=>{
-                openEditModal(btn.dataset.id);
-            });
-
-        });
-
-
-    document
-        .querySelectorAll(".action-btn.delete")
-        .forEach(btn=>{
-
-            btn.addEventListener("click",()=>{
-                deleteOfficer(btn.dataset.id);
-            });
-
-        });
-
+if(!filteredOfficers.length){
+tableBody.innerHTML=`<tr class="empty-row"><td colspan="10"><i class="fas fa-search"></i> No matching officers found</td></tr>`;
+countDisplay.textContent="0";
+return;
 }
 
+tableBody.innerHTML=filteredOfficers.map(o=>{
+const type=o.recType||"";
+const typeClass=type.toLowerCase()==="promoted"?"type-promoted":"type-direct";
+return`
+<tr>
+<td class="rank-highlight"><span class="rank-badge">${o.seniorityRank}</span></td>
+<td>${o.perNo||""}</td>
+<td>${o.name||""}</td>
+<td>${o.doj||""}</td>
+<td>${o.recYear||""}</td>
+<td><span class="type-badge ${typeClass}">${type||""}</span></td>
+<td>${o.dob||""}</td>
+<td>${o.marks??""}</td>
+<td>${o.vacancyYear||""}</td>
+<td style="text-align:center;white-space:nowrap;display:${(userpriv==="SAU"||userpriv==="ADN")?"table-cell":"none"}">
+<button class="action-btn edit" data-id="${o._firebaseId}" title="Edit"><i class="fas fa-edit"></i></button>
+<button class="action-btn delete" data-id="${o._firebaseId}" title="Delete"><i class="fas fa-trash-alt"></i></button>
+</td>
+</tr>`;
+}).join("");
+
+countDisplay.textContent=filteredOfficers.length;
+
+document.querySelectorAll(".action-btn.edit").forEach(btn=>btn.addEventListener("click",()=>openEditModal(btn.dataset.id)));
+document.querySelectorAll(".action-btn.delete").forEach(btn=>btn.addEventListener("click",()=>deleteOfficer(btn.dataset.id)));
+}
 
 /* ============================================================
    FIREBASE LISTENER
    ============================================================ */
 
 function startFirebaseListener(){
+const dbRef=ref(db,COLLECTION);
+onValue(dbRef,snapshot=>{
+const data=snapshot.val();
+allOfficers=[];
 
-    const dbRef=ref(db,COLLECTION);
+if(data)Object.entries(data).forEach(([perNo,record])=>{
+if(!record||typeof record!=="object")return;
+allOfficers.push({...record,perNo:record.perNo||perNo,_firebaseId:perNo});
+});
 
-    onValue(dbRef,snapshot=>{
-
-        const data=snapshot.val();
-        allOfficers=[];
-
-        if(data){
-            Object.entries(data).forEach(([perNo,record])=>{
-
-                if(!record||typeof record!=="object")return;
-
-                allOfficers.push({
-                    ...record,
-                    perNo:record.perNo||perNo,
-                    _firebaseId:perNo
-                });
-
-            });
-        }
-
-        console.log("Firebase data loaded:",allOfficers);
-
-        rankedOfficers=computeRanks(allOfficers);
-        renderTable();
-
-    },error=>{
-
-        console.error("Firebase read error:",error);
-
-        showToast(
-            "Error reading data: "+error.message,
-            "error"
-        );
-
-        tableBody.innerHTML=`
-            <tr class="empty-row">
-                <td colspan="9">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    Failed to load data: ${error.message}
-                </td>
-            </tr>`;
-
-    });
+console.log("Firebase data loaded:",allOfficers);
+rankedOfficers=computeRanks(allOfficers);
+renderTable();
+},error=>{
+console.error("Firebase read error:",error);
+showToast("Error reading data: "+error.message,"error");
+tableBody.innerHTML=`<tr class="empty-row"><td colspan="10"><i class="fas fa-exclamation-triangle"></i> Failed to load data: ${error.message}</td></tr>`;
+});
 }
 
 /* ============================================================
@@ -583,503 +379,157 @@ function startFirebaseListener(){
    ============================================================ */
 
 function openAddModal(){
-
-    modalTitle.textContent="Add Staff";
-
-    formDocId.value="";
-
-    staffForm.reset();
-
-    document.getElementById("form_perNo").disabled=false;
-
-    modalOverlay.classList.add("active");
-
+modalTitle.textContent="Add Staff";
+formDocId.value="";
+staffForm.reset();
+document.getElementById("form_perNo").disabled=false;
+document.getElementById("form_recType").value="promoted";
+modalOverlay.classList.add("active");
 }
-
 
 /* ============================================================
    EDIT MODAL
    ============================================================ */
 
 function openEditModal(firebaseId){
+const officer=allOfficers.find(o=>o._firebaseId===firebaseId);
+if(!officer)return;
 
-    const officer=
-        allOfficers.find(
-            o=>o._firebaseId===firebaseId
-        );
+modalTitle.textContent="Edit Staff";
+formDocId.value=officer._firebaseId;
 
-    if(!officer)return;
+document.getElementById("form_perNo").value=officer.perNo||officer._firebaseId||"";
+document.getElementById("form_perNo").disabled=true;
+document.getElementById("form_name").value=officer.name||"";
+document.getElementById("form_doj").value=officer.doj||"";
+document.getElementById("form_recYear").value=officer.recYear||"";
+document.getElementById("form_recType").value=officer.recType||"promoted";
+document.getElementById("form_dob").value=officer.dob||"";
+document.getElementById("form_marks").value=officer.marks??"";
+document.getElementById("form_vacancyYear").value=officer.vacancyYear||"";
 
-
-    modalTitle.textContent="Edit Staff";
-
-
-    /*
-       Store the Firebase key.
-
-       Since perNo is the key,
-       this will be the perNo.
-    */
-
-    formDocId.value=
-        officer._firebaseId;
-
-
-    document.getElementById(
-        "form_perNo"
-    ).value=
-        officer.perNo||
-        officer._firebaseId||
-        "";
-
-
-    /*
-       Do not allow changing perNo during edit.
-
-       Changing it would actually mean
-       moving the Firebase record to another key.
-    */
-
-    document.getElementById(
-        "form_perNo"
-    ).disabled=true;
-
-
-    document.getElementById(
-        "form_name"
-    ).value=
-        officer.name||"";
-
-
-    document.getElementById(
-        "form_doj"
-    ).value=
-        officer.doj||"";
-
-
-    document.getElementById(
-        "form_recYear"
-    ).value=
-        officer.recYear||"";
-
-
-    document.getElementById(
-        "form_dob"
-    ).value=
-        officer.dob||"";
-
-
-    document.getElementById(
-        "form_marks"
-    ).value=
-        officer.marks??"";
-
-
-    document.getElementById(
-        "form_vacancyYear"
-    ).value=
-        officer.vacancyYear||"";
-
-
-    modalOverlay.classList.add("active");
-
+modalOverlay.classList.add("active");
 }
-
-
-/* ============================================================
-   CLOSE MODAL
-   ============================================================ */
 
 function closeModal(){
-
-    modalOverlay.classList.remove(
-        "active"
-    );
-
-    document.getElementById(
-        "form_perNo"
-    ).disabled=false;
-
+modalOverlay.classList.remove("active");
+document.getElementById("form_perNo").disabled=false;
 }
-
 
 /* ============================================================
    SAVE
    ============================================================ */
 
-staffForm.addEventListener(
-    "submit",
-    async e=>{
+staffForm.addEventListener("submit",async e=>{
+e.preventDefault();
 
-        e.preventDefault();
+const perNo=document.getElementById("form_perNo").value.trim();
 
+const payload={
+perNo,
+name:document.getElementById("form_name").value.trim(),
+doj:document.getElementById("form_doj").value.trim(),
+recYear:document.getElementById("form_recYear").value.trim(),
+recType:document.getElementById("form_recType").value,
+dob:document.getElementById("form_dob").value.trim(),
+marks:document.getElementById("form_marks").value.trim(),
+vacancyYear:document.getElementById("form_vacancyYear").value.trim()
+};
 
-        const perNo=
-            document.getElementById(
-                "form_perNo"
-            ).value.trim();
+if(!perNo){showToast("perNo is required","error");return}
+if(!payload.name){showToast("Name is required","error");return}
+if(!payload.recType){showToast("Rec Type is required","error");return}
 
+try{
+const firebaseId=formDocId.value;
 
-        const payload={
+if(firebaseId){
+await update(ref(db,`${COLLECTION}/${firebaseId}`),payload);
+showToast("Staff updated successfully","success");
+}else{
+await set(ref(db,`${COLLECTION}/${perNo}`),payload);
+showToast("Staff added successfully","success");
+}
 
-            perNo:perNo,
-
-            name:
-                document.getElementById(
-                    "form_name"
-                ).value.trim(),
-
-            doj:
-                document.getElementById(
-                    "form_doj"
-                ).value.trim(),
-
-            recYear:
-                document.getElementById(
-                    "form_recYear"
-                ).value.trim(),
-
-            dob:
-                document.getElementById(
-                    "form_dob"
-                ).value.trim(),
-
-            marks:
-                document.getElementById(
-                    "form_marks"
-                ).value.trim(),
-
-            vacancyYear:
-                document.getElementById(
-                    "form_vacancyYear"
-                ).value.trim()
-
-        };
-
-
-        if(!perNo){
-
-            showToast(
-                "perNo is required",
-                "error"
-            );
-
-            return;
-
-        }
-
-
-        if(!payload.name){
-
-            showToast(
-                "Name is required",
-                "error"
-            );
-
-            return;
-
-        }
-
-
-        try{
-
-            const firebaseId=
-                formDocId.value;
-
-
-            if(firebaseId){
-
-                /*
-                   EDIT
-
-                   Firebase path:
-
-                   jtoseniority/perNo
-                */
-
-                await update(
-                    ref(
-                        db,
-                        `${COLLECTION}/${firebaseId}`
-                    ),
-                    payload
-                );
-
-
-                showToast(
-                    "Staff updated successfully",
-                    "success"
-                );
-
-            }else{
-
-                /*
-                   ADD
-
-                   IMPORTANT:
-                   perNo becomes the Firebase key.
-
-                   No push() is used.
-                */
-
-                await set(
-                    ref(
-                        db,
-                        `${COLLECTION}/${perNo}`
-                    ),
-                    payload
-                );
-
-
-                showToast(
-                    "Staff added successfully",
-                    "success"
-                );
-
-            }
-
-
-            closeModal();
-
-        }catch(error){
-
-            console.error(
-                "Save error:",
-                error
-            );
-
-            showToast(
-                "Error saving: "+
-                error.message,
-                "error"
-            );
-
-        }
-
-    }
-);
-
+closeModal();
+}catch(error){
+console.error("Save error:",error);
+showToast("Error saving: "+error.message,"error");
+}
+});
 
 /* ============================================================
    DELETE
    ============================================================ */
 
 async function deleteOfficer(firebaseId){
+const officer=allOfficers.find(o=>o._firebaseId===firebaseId);
+if(!officer)return;
 
-    const officer=
-        allOfficers.find(
-            o=>o._firebaseId===firebaseId
-        );
+const name=officer.name||officer.perNo||firebaseId;
+if(!confirm(`Delete "${name}"?\n\nThis cannot be undone.`))return;
 
-    if(!officer)return;
-
-
-    const name=
-        officer.name||
-        officer.perNo||
-        firebaseId;
-
-
-    if(!confirm(
-        `Delete "${name}"?\n\nThis cannot be undone.`
-    )){
-        return;
-    }
-
-
-    try{
-
-        await remove(
-            ref(
-                db,
-                `${COLLECTION}/${firebaseId}`
-            )
-        );
-
-
-        showToast(
-            "Officer deleted",
-            "success"
-        );
-
-
-    }catch(error){
-
-        console.error(
-            "Delete error:",
-            error
-        );
-
-        showToast(
-            "Error deleting: "+
-            error.message,
-            "error"
-        );
-
-    }
-
+try{
+await remove(ref(db,`${COLLECTION}/${firebaseId}`));
+showToast("Officer deleted","success");
+}catch(error){
+console.error("Delete error:",error);
+showToast("Error deleting: "+error.message,"error");
 }
-
+}
 
 /* ============================================================
    EXCEL EXPORT
    ============================================================ */
 
-document
-.getElementById("exportExcelBtn")
-.addEventListener("click",()=>{
+document.getElementById("exportExcelBtn").addEventListener("click",()=>{
+if(!filteredOfficers.length){
+showToast("No data to export","error");
+return;
+}
 
-    if(!filteredOfficers.length){
+const exportData=filteredOfficers.map(o=>({
+"Seniority Rank":o.seniorityRank,
+"perNo":o.perNo||"",
+"Name":o.name||"",
+"DOJ":o.doj||"",
+"Rec Year":o.recYear||"",
+"Rec Type":o.recType||"",
+"DOB":o.dob||"",
+"Marks":o.marks??"",
+"Vacancy Year":o.vacancyYear||""
+}));
 
-        showToast(
-            "No data to export",
-            "error"
-        );
+const ws=XLSX.utils.json_to_sheet(exportData);
+ws["!cols"]=[
+{wch:15},{wch:15},{wch:30},{wch:15},{wch:12},
+{wch:18},{wch:15},{wch:12},{wch:16}
+];
 
-        return;
-
-    }
-
-
-    const exportData=
-        filteredOfficers.map(o=>({
-
-            "Seniority Rank":
-                o.seniorityRank,
-
-            "perNo":
-                o.perNo||"",
-
-            "Name":
-                o.name||"",
-
-            "DOJ":
-                o.doj||"",
-
-            "Rec Year":
-                o.recYear||"",
-
-            "DOB":
-                o.dob||"",
-
-            "Marks":
-                o.marks??"",
-
-            "Vacancy Year":
-                o.vacancyYear||""
-
-        }));
-
-
-    const ws=
-        XLSX.utils.json_to_sheet(
-            exportData
-        );
-
-
-    ws["!cols"]=[
-
-        {wch:15},
-        {wch:15},
-        {wch:30},
-        {wch:15},
-        {wch:12},
-        {wch:15},
-        {wch:12},
-        {wch:16}
-
-    ];
-
-
-    const wb=
-        XLSX.utils.book_new();
-
-
-    XLSX.utils.book_append_sheet(
-        wb,
-        ws,
-        "JTO_Seniority"
-    );
-
-
-    XLSX.writeFile(
-        wb,
-        `JTO_Seniority_${new Date().toISOString().slice(0,10)}.xlsx`
-    );
-
-
-    showToast(
-        "Excel file downloaded",
-        "success"
-    );
-
+const wb=XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(wb,ws,"JTO_Seniority");
+XLSX.writeFile(wb,`JTO_Seniority_${new Date().toISOString().slice(0,10)}.xlsx`);
+showToast("Excel file downloaded","success");
 });
 
-
 /* ============================================================
-   SEARCH
+   SEARCH / BUTTONS
    ============================================================ */
 
-searchInput.addEventListener(
-    "input",
-    renderTable
-);
-/*================
-HOME BUTTON
-================= */
+searchInput.addEventListener("input",renderTable);
 
-document.getElementById("homeBtn").onclick = function(){
-window.location.href = "trphqhome.html";
-};
+document.getElementById("homeBtn").onclick=()=>window.location.href="trphqhome.html";
 
-/* ============================================================
-   MODAL BUTTONS
-   ============================================================ */
+document.getElementById("addStaffBtn").addEventListener("click",openAddModal);
+document.getElementById("modalCloseBtn").addEventListener("click",closeModal);
+document.getElementById("modalCancelBtn").addEventListener("click",closeModal);
 
-document
-.getElementById("addStaffBtn")
-.addEventListener(
-    "click",
-    openAddModal
-);
-
-
-document
-.getElementById("modalCloseBtn")
-.addEventListener(
-    "click",
-    closeModal
-);
-
-
-document
-.getElementById("modalCancelBtn")
-.addEventListener(
-    "click",
-    closeModal
-);
-
-
-modalOverlay.addEventListener(
-    "click",
-    e=>{
-
-        if(e.target===modalOverlay){
-            closeModal();
-        }
-
-    }
-);
-
-
-/* ============================================================
-   START FIREBASE
-   ============================================================ */
+modalOverlay.addEventListener("click",e=>{
+if(e.target===modalOverlay)closeModal();
+});
 
 startFirebaseListener();
-
 </script>
-
 </body>
 </html>
 
