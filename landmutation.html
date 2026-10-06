@@ -6,6 +6,7 @@
   <title>LAND MUTATION · next hearing alert</title>
   <!-- Bootstrap + dependencies -->
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
@@ -26,6 +27,10 @@
     #mutation-table th{background:#337ab7;color:white;text-align:center;vertical-align:middle;position:sticky;top:0;z-index:10}
     #mutation-table td{vertical-align:middle}
     .action-buttons{white-space:nowrap}
+    .action-btn{border:none;background:transparent;padding:5px 8px;border-radius:8px;cursor:pointer;font-size:.9rem;transition:.1s;color:#4a6f8a}
+    .action-btn:hover{background:#e2eef9;color:#004b7a}
+    .action-btn.edit:hover{color:#1e6f9f;background:#e2f0fa}
+    .action-btn.delete:hover{color:#b13e3e;background:#fceaea}
     @media(max-width:768px){.filter-box,.filter-box.search-box{width:100%}.page-title{font-size:25px}}
     .btn-hearing-alert { margin-left: 15px; background: #ff9800; border-color: #e68900; color: #fff; }
     .btn-hearing-alert:hover { background: #e68900; border-color: #cc7a00; }
@@ -57,7 +62,7 @@
 
   <div style="margin:15px 0">
     <button class="btn btn-primary" id="exportBtn">📊 Export Filtered Data</button>
-    <button class="btn btn-primary" id="addBtn" style="margin-left:20px; display:none">➕ Add New Entry</button>
+    <button class="btn btn-primary" id="addBtn" style="margin-left:20px">➕ Add New Entry</button>
   </div>
 
   <div class="table-container">
@@ -75,14 +80,13 @@
   const userpriv = sessionStorage.getItem("userpriv");
     console.log(userpriv);
     const actionHeader = document.getElementById('thaction');
-    const addBtn = document.getElementById('addBtn');
+   
     if (userpriv === 'SAU' || userpriv === 'LM') {
         actionHeader.style.display = 'table-cell';
-        addBtn.style.display = 'table-cell';
    
     } else {
         actionHeader.style.display = 'none';
-        addBtn.style.display = 'none';
+    
     } 
 
   import { getDatabase, ref, onValue, get, set, update } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
@@ -245,7 +249,9 @@
         <td style="text-align:center">${escapeHTML(d.presentStatus)}</td>
         <td>${escapeHTML(d.officeResponsible)}</td>
         <td style="text-align:center">${escapeHTML(d.nextHearingDate || d.nextHearingdate)}</td>
-        <td class="action-buttons" style="display: ${ (userpriv === 'SAU' || userpriv === 'LM') ? 'table-cell' : 'none' };"><button class="btn btn-info btn-xs edit-btn">Edit</button> <button class="btn btn-danger btn-xs delete-btn">Delete</button></td>
+        <td class="action-buttons" style="display: ${ (userpriv === 'SAU' || userpriv === 'LM') ? 'table-cell' : 'none' };">
+          <button class="btn btn-info btn-xs edit-btn"> Edit</button> 
+          <button class="btn btn-danger btn-xs delete-btn">Delete</button></td>
       `;
       row.querySelector(".edit-btn").onclick = () => editMutation(d);
       row.querySelector(".delete-btn").onclick = () => deleteMutation(d.key);
