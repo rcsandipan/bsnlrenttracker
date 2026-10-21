@@ -117,6 +117,7 @@
           <th style="text-align: center;">Next Revision <br> Date</th>
           <th style="text-align: center;">Next Revision <br> Due After (Days)</th>
           <th style="text-align: center;">Payment Processed Up to (Date)</th>
+          <th style="text-align: center;">Last Payment Details</th>
           <th style="text-align: center; display: none;" id="thaction">Action</th>
          
         </tr>
@@ -350,6 +351,7 @@ async function renderTable() {
                                                 
                 </td>
             <td style="text-align:center;">${btsdata.lastPaymentDate || ''}</td>
+            <td style="text-align:center;"><button class="btn btn-primary btn-xs last-payment-details-btn">View</button></td>
 
             <td style="width:130px; display: ${ (userpriv === 'SAU' || userpriv === 'PLG') ? 'table-cell' : 'none' };">
                 <button class="btn btn-info btn-xs edit-btn">Edit</button>
@@ -360,6 +362,7 @@ async function renderTable() {
         `;
         row.querySelector(".edit-btn").addEventListener("click", () => editBts(btsdata));
         row.querySelector(".delete-btn").addEventListener("click", () => deleteBts(btsdata.key));
+        row.querySelector(".last-payment-details-btn").addEventListener("click", () => showLastPaymentDetails(btsdata));
         tbody.appendChild(row);
     });
     searchcount.innerText = filteredData.length;
@@ -787,6 +790,30 @@ btnAddEntry.addEventListener("click", async () => {
 
 
 /* ============================= */
+/* ===== LAST PAYMENT DETAILS POPUP ===== */
+function showLastPaymentDetails(btsdata) {
+    const history = Object.entries(btsdata).filter(([key]) => key.startsWith("lastPayment"));
+    const labels = {
+        lastPaymentStartDate: "Payment Period Start Date", lastPaymentDate: "Payment Processed Up to (Date)",
+        lastPaymentApprovedAt: "Approval Date", lastPaymentCalculationType: "Calculation Type",
+        lastPaymentDays: "Payable Days", lastPaymentMonths: "Payable Months / Fraction",
+        lastPaymentRentAmount: "Rent Payable (₹)", lastPaymentWWAmount: "Watch & Ward Payable (₹)",
+        lastPaymentGSTAmount: "GST @ 18% on Rent + W&W (₹)", lastPaymentTotalAmount: "Total Payment incl. GST (₹)"
+    };
+    const esc = value => paymentEscape(value === undefined || value === null || value === "" ? "—" : value);
+    const rows = history.map(([key, value]) => {
+        const label = labels[key] || key.replace(/^lastPayment/, "").replace(/([A-Z])/g, " $1").trim();
+        const display = typeof value === "number" && /Amount$/.test(key) ? `₹${paymentMoney(value)}` : value;
+        return `<tr><th style="width:45%;text-align:left">${esc(label)}</th><td>${esc(display)}</td></tr>`;
+    }).join("");
+    Swal.fire({
+        title: `Last Payment Details - ${paymentEscape(btsdata.contractcode || btsdata.key)}`,
+        width: 650,
+        html: history.length ? `<div style="max-height:60vh;overflow:auto"><table class="table table-bordered table-striped">${rows}</table></div><hr><div style="text-align:left"><b>Current monthly rent:</b> ₹${paymentMoney(btsdata.monthlyrent)}<br><b>Current monthly Watch & Ward:</b> ₹${paymentMoney(btsdata.wwcharge)}</div>` : `<p>No payment history is saved for this entry.</p>`,
+        confirmButtonText: "Close"
+    });
+}
+
 /* ===== PROCESS BTS PAYMENT === */
 /* ============================= */
 const processPaymentBtn = document.getElementById("processPaymentBtn");
@@ -876,9 +903,10 @@ processPaymentBtn.addEventListener("click", async () => {
 
             const rentAmount = Math.round((monthlyRent * payableMonths + Number.EPSILON) * 100) / 100;
             const wwAmount = Math.round((monthlyWW * payableMonths + Number.EPSILON) * 100) / 100;
+            const gstAmount = Math.round(((rentAmount + wwAmount) * 0.18 + Number.EPSILON) * 100) / 100;
             eligible.push({
-                key, ...b, payableDays, fullMonths, payableMonths, calculationType, rentAmount, wwAmount,
-                totalAmount: Math.round((rentAmount + wwAmount + Number.EPSILON) * 100) / 100
+                key, ...b, payableDays, fullMonths, payableMonths, calculationType, rentAmount, wwAmount, gstAmount,
+                totalAmount: Math.round((rentAmount + wwAmount + gstAmount + Number.EPSILON) * 100) / 100
             });
         });
 
@@ -892,6 +920,7 @@ processPaymentBtn.addEventListener("click", async () => {
         const totalsFor = list => ({
             rent: Math.round((list.reduce((sum, b) => sum + b.rentAmount, 0) + Number.EPSILON) * 100) / 100,
             ww: Math.round((list.reduce((sum, b) => sum + b.wwAmount, 0) + Number.EPSILON) * 100) / 100,
+            gst: Math.round((list.reduce((sum, b) => sum + b.gstAmount, 0) + Number.EPSILON) * 100) / 100,
             total: Math.round((list.reduce((sum, b) => sum + b.totalAmount, 0) + Number.EPSILON) * 100) / 100
         });
 
@@ -906,14 +935,16 @@ processPaymentBtn.addEventListener("click", async () => {
                 "Payment Start Date": paymentDMY(period.start), "Payment End Date": paymentDMY(period.end),
                 "Calculation Type": b.calculationType, "Payable Days": b.payableDays,
                 "Payable Months / Fraction": b.payableMonths, "Monthly Rent (₹)": Number(b.monthlyrent || 0),
-                "Rent Payable (₹)": b.rentAmount, "Monthly Watch & Ward (₹)": Number(b.wwcharge || 0),
-                "Watch & Ward Payable (₹)": b.wwAmount, "Total Payable (₹)": b.totalAmount
+                "Rent Payable (₹)": b.rentAmount, 
+                "Monthly Watch & Ward (₹)": Number(b.wwcharge || 0),
+                "Watch & Ward Payable (₹)": b.wwAmount, "GST @ 18% on Rent + W&W (₹)": b.gstAmount, "Total Payable incl. GST (₹)": b.totalAmount
             }));
             rows.push({ "SL": "", "Vendor Code": "", "Contract Code": "", "Name": "", "BTS Location": "",
                 "Agreement Start Date": "", "Agreement End Date": "", "Payment Processed Up to (Date)": "",
                 "Payment Start Date": "", "Payment End Date": "", "Calculation Type": "", "Payable Days": "",
                 "Payable Months / Fraction": "", "Monthly Rent (₹)": "", "Rent Payable (₹)": totals.rent,
-                "Monthly Watch & Ward (₹)": "", "Watch & Ward Payable (₹)": totals.ww, "Total Payable (₹)": totals.total });
+                 "Monthly Watch & Ward (₹)": "",
+                "Watch & Ward Payable (₹)": totals.ww, "GST @ 18% on Rent + W&W (₹)": totals.gst,"Total Payable incl. GST (₹)": totals.total });
             const wb = XLSX.utils.book_new(), ws = XLSX.utils.json_to_sheet(rows);
             ws["!cols"] = Array.from({ length: 18 }, (_, i) => ({ wch: [6,16,18,24,28,16,16,25,16,16,24,12,22,18,18,22,22,18][i] }));
             XLSX.utils.book_append_sheet(wb, ws, "BTS Payment");
@@ -921,7 +952,8 @@ processPaymentBtn.addEventListener("click", async () => {
                 ["Payment Period", `${paymentDMY(period.start)} to ${paymentDMY(period.end)}`],
                 ["Calculation", calculationType], ["Payable Days", payableDays], ["Full Calendar Months", fullMonths || 0],
                 ["Payable Months / Fraction", payableMonths], ["Selected Entries", list.length],
-                ["Total Rent (₹)", totals.rent], ["Total Watch & Ward (₹)", totals.ww], ["Grand Total (₹)", totals.total]
+                ["Total Rent (₹)", totals.rent], ["GST @ 18% on Rent + W&W (₹)", totals.gst],
+                ["Total Watch & Ward (₹)", totals.ww], ["Grand Total incl. GST (₹)", totals.total]
             ]), "Summary");
             XLSX.writeFile(wb, `BTS_Payment_${period.start}_to_${period.end}.xlsx`);
         }
@@ -930,7 +962,10 @@ processPaymentBtn.addEventListener("click", async () => {
             <td><input type="checkbox" class="payment-entry-check" data-key="${paymentEscape(b.key)}" aria-label="Select ${paymentEscape(b.contractcode || b.key)}"></td>
             <td>${i + 1}</td><td>${paymentEscape(b.vendorcode)}</td><td>${paymentEscape(b.contractcode || b.key)}</td>
             <td>${paymentEscape(b.name)}</td><td>${paymentEscape(b.location)}</td><td>${paymentEscape(b.agreeenddate)}</td>
-            <td class="text-right">₹${paymentMoney(b.rentAmount)}</td><td class="text-right">₹${paymentMoney(b.wwAmount)}</td>
+            <td class="text-right">₹${paymentMoney(b.rentAmount)}</td>
+            <td class="text-right">₹${paymentMoney(b.wwAmount)}</td>
+            <td class="text-right">₹${paymentMoney(b.gstAmount)}</td>
+            
             <td class="text-right"><b>₹${paymentMoney(b.totalAmount)}</b></td><td>${paymentEscape(b.lastPaymentDate || "Never")}</td></tr>`).join("");
 
         const html = `<div style="text-align:left;margin-bottom:12px">
@@ -941,11 +976,12 @@ processPaymentBtn.addEventListener("click", async () => {
             <div style="margin-top:10px;padding:10px;background:#f3f6f9;border-radius:5px">
                 <b>Selected:</b> <span id="selectedPaymentCount">0</span> &nbsp; | &nbsp;
                 <b>Rent:</b> ₹<span id="selectedRentTotal">0.00</span> &nbsp; | &nbsp;
+                <b>GST (18% of rent + W&amp;W):</b> ₹<span id="selectedGSTTotal">0.00</span> &nbsp; | &nbsp;
                 <b>Watch &amp; Ward:</b> ₹<span id="selectedWWTotal">0.00</span> &nbsp; | &nbsp;
-                <b>Grand Total:</b> ₹<span id="selectedGrandTotal">0.00</span>
+                <b>Grand Total incl. GST:</b> ₹<span id="selectedGrandTotal">0.00</span>
             </div></div>
             <div style="overflow:auto;max-height:48vh"><table class="table table-bordered table-striped" style="font-size:12px">
-            <thead><tr><th><input type="checkbox" id="selectAllPaymentEntries" aria-label="Select all entries"></th><th>SL</th><th>Vendor</th><th>Contract</th><th>Name</th><th>Location</th><th>Agreement End</th><th>Rent Payable</th><th>W&amp;W Payable</th><th>Total</th><th>Payment Processed Up to (Date)</th></tr></thead>
+            <thead><tr><th><input type="checkbox" id="selectAllPaymentEntries" aria-label="Select all entries"></th><th>SL</th><th>Vendor</th><th>Contract</th><th>Name</th><th>Location</th><th>Agreement End</th><th>Rent Payable</th><th>W&amp;W Payable</th><th>GST @ 18% on Rent + W&amp;W</th><th>Total incl. GST</th><th>Payment Processed Up to (Date)</th></tr></thead>
             <tbody>${tableRows}</tbody></table></div>`;
 
         await Swal.fire({
@@ -960,6 +996,7 @@ processPaymentBtn.addEventListener("click", async () => {
                     document.getElementById("selectedPaymentCount").textContent = list.length;
                     document.getElementById("selectedRentTotal").textContent = paymentMoney(totals.rent);
                     document.getElementById("selectedWWTotal").textContent = paymentMoney(totals.ww);
+                    document.getElementById("selectedGSTTotal").textContent = paymentMoney(totals.gst);
                     document.getElementById("selectedGrandTotal").textContent = paymentMoney(totals.total);
                     document.getElementById("approveSelectedPayments").disabled = !list.length;
                     document.getElementById("exportPaymentExcel").disabled = !list.length;
@@ -989,7 +1026,8 @@ processPaymentBtn.addEventListener("click", async () => {
                         title: "Approve Selected Payments?", icon: "warning", showCancelButton: true,
                         confirmButtonText: "Yes, Approve Selected", cancelButtonText: "Cancel",
                         html: `You are approving <b>${selected.length}</b> BTS entries.<br><b>Rent:</b> ₹${paymentMoney(totals.rent)}<br>
-                            <b>Watch &amp; Ward:</b> ₹${paymentMoney(totals.ww)}<br><b>Grand Total: ₹${paymentMoney(totals.total)}</b><br><br>
+                            <b>GST (18% of rent + W&amp;W):</b> ₹${paymentMoney(totals.gst)}<br>
+                            <b>Watch &amp; Ward:</b> ₹${paymentMoney(totals.ww)}<br><b>Grand Total incl. GST: ₹${paymentMoney(totals.total)}</b><br><br>
                             Only the checked entries will be updated.`
                     });
                     if (!confirm.isConfirmed) return;
@@ -1018,12 +1056,13 @@ processPaymentBtn.addEventListener("click", async () => {
                             updates[`${base}/lastPaymentCalculationType`] = b.calculationType;
                             updates[`${base}/lastPaymentRentAmount`] = b.rentAmount;
                             updates[`${base}/lastPaymentWWAmount`] = b.wwAmount;
+                            updates[`${base}/lastPaymentGSTAmount`] = b.gstAmount;
                             updates[`${base}/lastPaymentTotalAmount`] = b.totalAmount;
                         });
                         await update(ref(db), updates);
                         Swal.close();
                         await Swal.fire({ title: "Payments Approved", icon: "success",
-                            html: `${selected.length} selected entries updated successfully.<br><b>Grand Total: ₹${paymentMoney(totals.total)}</b><br>Payment processed up to: ${paymentDMY(period.end)}` });
+                            html: `${selected.length} selected entries updated successfully.<br><b>GST: ₹${paymentMoney(totals.gst)}</b><br><b>Grand Total incl. GST: ₹${paymentMoney(totals.total)}</b><br>Payment processed up to: ${paymentDMY(period.end)}` });
                     } catch (err) {
                         Swal.fire("Payment Not Approved", err.message || String(err), "error");
                     }
