@@ -86,8 +86,11 @@
     <button class="btn btn-primary" id="exportBtn" >
     📊 Export to Excel
 </button> 
-<button class="btn btn-primary" id="addBtn" style="margin-left: 50px;">
+<button class="btn btn-primary" id="addBtn" style="margin-left: 20px;">
     ➕ Add New Entry
+</button>
+<button class="btn btn-warning" id="processPaymentBtn" style="margin-left: 20px;">
+    💰 Process Payment
 </button>
 </div>
 
@@ -113,6 +116,7 @@
           <th style="text-align: center;">HPC Report</th>
           <th style="text-align: center;">Next Revision <br> Date</th>
           <th style="text-align: center;">Next Revision <br> Due After (Days)</th>
+          <th style="text-align: center;">Payment Processed Up to (Date)</th>
           <th style="text-align: center; display: none;" id="thaction">Action</th>
          
         </tr>
@@ -345,6 +349,7 @@ async function renderTable() {
                 }
                                                 
                 </td>
+            <td style="text-align:center;">${btsdata.lastPaymentDate || ''}</td>
 
             <td style="width:130px; display: ${ (userpriv === 'SAU' || userpriv === 'PLG') ? 'table-cell' : 'none' };">
                 <button class="btn btn-info btn-xs edit-btn">Edit</button>
@@ -618,7 +623,7 @@ window.deleteBts = async function (key) {
   if (!confirm.isConfirmed) return;
 
   try {
-    await set(ref(db, `btslist/${key}`), null);
+    await remove(ref(db, `nbsnlbtslist/${key}`));
     Swal.fire("Deleted", "Entry removed", "success");
     //window.reload();
 
@@ -747,7 +752,7 @@ btnAddEntry.addEventListener("click", async () => {
      
 
     //console.log(JSON.stringify(data));
-        await set(ref(db, `btslist/${key}`), {
+        await set(ref(db, `nbsnlbtslist/${key}`), {
            name: name,
 	         location: location,
            vendorcode: vendorcode,
@@ -780,6 +785,257 @@ btnAddEntry.addEventListener("click", async () => {
 
 // Upload PDF //
 
+
+/* ============================= */
+/* ===== PROCESS BTS PAYMENT === */
+/* ============================= */
+const processPaymentBtn = document.getElementById("processPaymentBtn");
+
+// Accept dates stored as DD-MM-YYYY or YYYY-MM-DD and normalize to YYYY-MM-DD.
+function paymentISODate(value) {
+    if (!value) return "";
+    const s = String(value).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const m = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+    return m ? `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` : "";
+}
+
+function paymentDMY(iso) {
+    if (!iso) return "";
+    const [y, m, d] = iso.split("-");
+    return `${d}-${m}-${y}`;
+}
+
+// Inclusive day count: 15-Apr to 14-May = 30 days.
+function paymentDaysInclusive(startISO, endISO) {
+    const [sy, sm, sd] = startISO.split("-").map(Number);
+    const [ey, em, ed] = endISO.split("-").map(Number);
+    return Math.round((Date.UTC(ey, em - 1, ed) - Date.UTC(sy, sm - 1, sd)) / 86400000) + 1;
+}
+
+// Full calendar months are charged as monthly amounts; any broken-month
+// period is prorated using inclusive calendar days / 30.
+function paymentPeriodRate(startISO, endISO) {
+    const [sy, sm, sd] = startISO.split("-").map(Number);
+    const [ey, em, ed] = endISO.split("-").map(Number);
+    const lastDayOfEndMonth = new Date(Date.UTC(ey, em, 0)).getUTCDate();
+    const fullMonths = sd === 1 && ed === lastDayOfEndMonth
+        ? (ey * 12 + em) - (sy * 12 + sm) + 1 : 0;
+    const payableDays = paymentDaysInclusive(startISO, endISO);
+    return { payableDays, fullMonths, payableMonths: fullMonths || payableDays / 30,
+        calculationType: fullMonths ? "Full calendar month(s)" : "Prorated (days / 30)" };
+}
+
+function paymentMoney(value) {
+    return Number(value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function paymentEscape(value) {
+    return String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+processPaymentBtn.addEventListener("click", async () => {
+    const { value: period } = await Swal.fire({
+        title: "Process BTS Payment", width: 430,
+        html: `<div style="text-align:left"><label>Start Date</label><input id="paymentStartDate" type="date" class="swal2-input" style="width:100%;margin:5px 0 15px"><label>End Date</label><input id="paymentEndDate" type="date" class="swal2-input" style="width:100%;margin:5px 0"></div>`,
+        showCancelButton: true, confirmButtonText: "Find Eligible Entries",
+        preConfirm: () => {
+            const start = document.getElementById("paymentStartDate").value;
+            const end = document.getElementById("paymentEndDate").value;
+            if (!start || !end || start > end) {
+                Swal.showValidationMessage("Please select a valid start date and end date.");
+                return false;
+            }
+            return { start, end };
+        }
+    });
+    if (!period) return;
+
+    try {
+        // Always read fresh database records before processing.
+        const snapshot = await get(ref(db, "nbsnlbtslist"));
+        const records = snapshot.val() || {};
+        const paymentRate = paymentPeriodRate(period.start, period.end);
+        const { payableDays, fullMonths, payableMonths, calculationType } = paymentRate;
+        const eligible = [];
+
+        Object.entries(records).forEach(([key, b]) => {
+            const agreementStart = paymentISODate(b.agreestartdate);
+            const agreementEnd = paymentISODate(b.agreeenddate);
+            const rawLastPayment = String(b.lastPaymentDate || "").trim();
+            const lastPayment = paymentISODate(rawLastPayment);
+
+            // A non-empty but invalid lastPaymentDate is rejected for safety.
+            const paymentHistoryValid = !rawLastPayment || (lastPayment && lastPayment < period.start);
+            if (!agreementStart || !agreementEnd || agreementStart > period.start ||
+                agreementEnd < period.end || !paymentHistoryValid) return;
+
+            const monthlyRent = Number(b.monthlyrent || 0);
+            const monthlyWW = Number(b.wwcharge || 0);
+            if (!Number.isFinite(monthlyRent) || !Number.isFinite(monthlyWW)) return;
+
+            const rentAmount = Math.round((monthlyRent * payableMonths + Number.EPSILON) * 100) / 100;
+            const wwAmount = Math.round((monthlyWW * payableMonths + Number.EPSILON) * 100) / 100;
+            eligible.push({
+                key, ...b, payableDays, fullMonths, payableMonths, calculationType, rentAmount, wwAmount,
+                totalAmount: Math.round((rentAmount + wwAmount + Number.EPSILON) * 100) / 100
+            });
+        });
+
+        if (!eligible.length) {
+            await Swal.fire("No Eligible Entries", "No BTS entries have agreement validity for the entire selected period without overlapping a previous payment.", "info");
+            return;
+        }
+
+        const selectedKeys = new Set();
+        const getSelected = () => eligible.filter(b => selectedKeys.has(b.key));
+        const totalsFor = list => ({
+            rent: Math.round((list.reduce((sum, b) => sum + b.rentAmount, 0) + Number.EPSILON) * 100) / 100,
+            ww: Math.round((list.reduce((sum, b) => sum + b.wwAmount, 0) + Number.EPSILON) * 100) / 100,
+            total: Math.round((list.reduce((sum, b) => sum + b.totalAmount, 0) + Number.EPSILON) * 100) / 100
+        });
+
+        function exportPaymentExcel(list) {
+            if (!list.length) { Swal.showValidationMessage("Select at least one entry to export."); return; }
+            const totals = totalsFor(list);
+            const rows = list.map((b, i) => ({
+                "SL": i + 1, "Vendor Code": b.vendorcode || "", "Contract Code": b.contractcode || b.key,
+                "Name": b.name || "", "BTS Location": b.location || "",
+                "Agreement Start Date": b.agreestartdate || "", "Agreement End Date": b.agreeenddate || "",
+                "Payment Processed Up to (Date)": b.lastPaymentDate || "Never",
+                "Payment Start Date": paymentDMY(period.start), "Payment End Date": paymentDMY(period.end),
+                "Calculation Type": b.calculationType, "Payable Days": b.payableDays,
+                "Payable Months / Fraction": b.payableMonths, "Monthly Rent (₹)": Number(b.monthlyrent || 0),
+                "Rent Payable (₹)": b.rentAmount, "Monthly Watch & Ward (₹)": Number(b.wwcharge || 0),
+                "Watch & Ward Payable (₹)": b.wwAmount, "Total Payable (₹)": b.totalAmount
+            }));
+            rows.push({ "SL": "", "Vendor Code": "", "Contract Code": "", "Name": "", "BTS Location": "",
+                "Agreement Start Date": "", "Agreement End Date": "", "Payment Processed Up to (Date)": "",
+                "Payment Start Date": "", "Payment End Date": "", "Calculation Type": "", "Payable Days": "",
+                "Payable Months / Fraction": "", "Monthly Rent (₹)": "", "Rent Payable (₹)": totals.rent,
+                "Monthly Watch & Ward (₹)": "", "Watch & Ward Payable (₹)": totals.ww, "Total Payable (₹)": totals.total });
+            const wb = XLSX.utils.book_new(), ws = XLSX.utils.json_to_sheet(rows);
+            ws["!cols"] = Array.from({ length: 18 }, (_, i) => ({ wch: [6,16,18,24,28,16,16,25,16,16,24,12,22,18,18,22,22,18][i] }));
+            XLSX.utils.book_append_sheet(wb, ws, "BTS Payment");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+                ["Payment Period", `${paymentDMY(period.start)} to ${paymentDMY(period.end)}`],
+                ["Calculation", calculationType], ["Payable Days", payableDays], ["Full Calendar Months", fullMonths || 0],
+                ["Payable Months / Fraction", payableMonths], ["Selected Entries", list.length],
+                ["Total Rent (₹)", totals.rent], ["Total Watch & Ward (₹)", totals.ww], ["Grand Total (₹)", totals.total]
+            ]), "Summary");
+            XLSX.writeFile(wb, `BTS_Payment_${period.start}_to_${period.end}.xlsx`);
+        }
+
+        const tableRows = eligible.map((b, i) => `<tr>
+            <td><input type="checkbox" class="payment-entry-check" data-key="${paymentEscape(b.key)}" aria-label="Select ${paymentEscape(b.contractcode || b.key)}"></td>
+            <td>${i + 1}</td><td>${paymentEscape(b.vendorcode)}</td><td>${paymentEscape(b.contractcode || b.key)}</td>
+            <td>${paymentEscape(b.name)}</td><td>${paymentEscape(b.location)}</td><td>${paymentEscape(b.agreeenddate)}</td>
+            <td class="text-right">₹${paymentMoney(b.rentAmount)}</td><td class="text-right">₹${paymentMoney(b.wwAmount)}</td>
+            <td class="text-right"><b>₹${paymentMoney(b.totalAmount)}</b></td><td>${paymentEscape(b.lastPaymentDate || "Never")}</td></tr>`).join("");
+
+        const html = `<div style="text-align:left;margin-bottom:12px">
+            <b>Payment Period:</b> ${paymentDMY(period.start)} to ${paymentDMY(period.end)}<br>
+            <b>Payable Days (inclusive):</b> ${payableDays} &nbsp; <b>Eligible Entries:</b> ${eligible.length}<br>
+            <b>Calculation:</b> ${calculationType} (${fullMonths ? `${fullMonths} full month(s)` : `${payableDays} ÷ 30 = ${payableMonths.toFixed(2)} month(s)`})<br>
+            <small>Full calendar months (first day through last day) use monthly charges × month count. Any broken-month period uses monthly charges × inclusive days ÷ 30.</small>
+            <div style="margin-top:10px;padding:10px;background:#f3f6f9;border-radius:5px">
+                <b>Selected:</b> <span id="selectedPaymentCount">0</span> &nbsp; | &nbsp;
+                <b>Rent:</b> ₹<span id="selectedRentTotal">0.00</span> &nbsp; | &nbsp;
+                <b>Watch &amp; Ward:</b> ₹<span id="selectedWWTotal">0.00</span> &nbsp; | &nbsp;
+                <b>Grand Total:</b> ₹<span id="selectedGrandTotal">0.00</span>
+            </div></div>
+            <div style="overflow:auto;max-height:48vh"><table class="table table-bordered table-striped" style="font-size:12px">
+            <thead><tr><th><input type="checkbox" id="selectAllPaymentEntries" aria-label="Select all entries"></th><th>SL</th><th>Vendor</th><th>Contract</th><th>Name</th><th>Location</th><th>Agreement End</th><th>Rent Payable</th><th>W&amp;W Payable</th><th>Total</th><th>Payment Processed Up to (Date)</th></tr></thead>
+            <tbody>${tableRows}</tbody></table></div>`;
+
+        await Swal.fire({
+            title: "Select BTS Entries for Payment", width: "1350px", html,
+            showConfirmButton: false, showCloseButton: true,
+            footer: `<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;width:100%">
+                <button type="button" id="exportPaymentExcel" class="swal2-styled" style="background:#198754">Export Selected .xlsx</button>
+                <button type="button" id="approveSelectedPayments" class="swal2-styled" style="background:#0d6efd">Approve Selected Payments</button></div>`,
+            didOpen: () => {
+                const updateSelectionSummary = () => {
+                    const list = getSelected(), totals = totalsFor(list);
+                    document.getElementById("selectedPaymentCount").textContent = list.length;
+                    document.getElementById("selectedRentTotal").textContent = paymentMoney(totals.rent);
+                    document.getElementById("selectedWWTotal").textContent = paymentMoney(totals.ww);
+                    document.getElementById("selectedGrandTotal").textContent = paymentMoney(totals.total);
+                    document.getElementById("approveSelectedPayments").disabled = !list.length;
+                    document.getElementById("exportPaymentExcel").disabled = !list.length;
+                    const checks = [...document.querySelectorAll(".payment-entry-check")];
+                    const selectedCount = checks.filter(c => c.checked).length;
+                    const selectAll = document.getElementById("selectAllPaymentEntries");
+                    selectAll.checked = checks.length > 0 && selectedCount === checks.length;
+                    selectAll.indeterminate = selectedCount > 0 && selectedCount < checks.length;
+                };
+                document.querySelectorAll(".payment-entry-check").forEach(check => check.addEventListener("change", () => {
+                    if (check.checked) selectedKeys.add(check.dataset.key); else selectedKeys.delete(check.dataset.key);
+                    updateSelectionSummary();
+                }));
+                document.getElementById("selectAllPaymentEntries").addEventListener("change", event => {
+                    document.querySelectorAll(".payment-entry-check").forEach(check => {
+                        check.checked = event.target.checked;
+                        if (check.checked) selectedKeys.add(check.dataset.key); else selectedKeys.delete(check.dataset.key);
+                    });
+                    updateSelectionSummary();
+                });
+                document.getElementById("exportPaymentExcel").addEventListener("click", () => exportPaymentExcel(getSelected()));
+                document.getElementById("approveSelectedPayments").addEventListener("click", async () => {
+                    const selected = getSelected();
+                    if (!selected.length) { await Swal.fire("No Entries Selected", "Select at least one entry.", "info"); return; }
+                    const totals = totalsFor(selected);
+                    const confirm = await Swal.fire({
+                        title: "Approve Selected Payments?", icon: "warning", showCancelButton: true,
+                        confirmButtonText: "Yes, Approve Selected", cancelButtonText: "Cancel",
+                        html: `You are approving <b>${selected.length}</b> BTS entries.<br><b>Rent:</b> ₹${paymentMoney(totals.rent)}<br>
+                            <b>Watch &amp; Ward:</b> ₹${paymentMoney(totals.ww)}<br><b>Grand Total: ₹${paymentMoney(totals.total)}</b><br><br>
+                            Only the checked entries will be updated.`
+                    });
+                    if (!confirm.isConfirmed) return;
+                    try {
+                        // Revalidate selected records before the single multi-location update.
+                        const latestSnapshots = await Promise.all(selected.map(b => get(ref(db, `nbsnlbtslist/${b.key}`))));
+                        for (let i = 0; i < selected.length; i++) {
+                            const b = selected[i], latestSnap = latestSnapshots[i];
+                            if (!latestSnap.exists()) throw new Error(`Entry ${b.contractcode || b.key} no longer exists. No payments were updated.`);
+                            const current = latestSnap.val();
+                            const aStart = paymentISODate(current.agreestartdate), aEnd = paymentISODate(current.agreeenddate);
+                            const rawLast = String(current.lastPaymentDate || "").trim(), last = paymentISODate(rawLast);
+                            if (!aStart || !aEnd || aStart > period.start || aEnd < period.end ||
+                                (rawLast && (!last || last >= period.start))) {
+                                throw new Error(`Entry ${b.contractcode || b.key} is no longer eligible. No payments were updated; please process the list again.`);
+                            }
+                        }
+                        const serverDate = (await getFirebaseServerDateTime()).date, updates = {};
+                        selected.forEach(b => {
+                            const base = `nbsnlbtslist/${b.key}`;
+                            updates[`${base}/lastPaymentDate`] = paymentDMY(period.end);
+                            updates[`${base}/lastPaymentStartDate`] = paymentDMY(period.start);
+                            updates[`${base}/lastPaymentApprovedAt`] = serverDate;
+                            updates[`${base}/lastPaymentDays`] = b.payableDays;
+                            updates[`${base}/lastPaymentMonths`] = b.payableMonths;
+                            updates[`${base}/lastPaymentCalculationType`] = b.calculationType;
+                            updates[`${base}/lastPaymentRentAmount`] = b.rentAmount;
+                            updates[`${base}/lastPaymentWWAmount`] = b.wwAmount;
+                            updates[`${base}/lastPaymentTotalAmount`] = b.totalAmount;
+                        });
+                        await update(ref(db), updates);
+                        Swal.close();
+                        await Swal.fire({ title: "Payments Approved", icon: "success",
+                            html: `${selected.length} selected entries updated successfully.<br><b>Grand Total: ₹${paymentMoney(totals.total)}</b><br>Payment processed up to: ${paymentDMY(period.end)}` });
+                    } catch (err) {
+                        Swal.fire("Payment Not Approved", err.message || String(err), "error");
+                    }
+                });
+                updateSelectionSummary();
+            }
+        });
+    } catch (err) {
+        console.error("Payment processing error:", err);
+        Swal.fire("Error", err.message || "Could not process payments.", "error");
+    }
+});
 
 /* ============================= */
 /* ===== EXPORT TO EXCEL ===== */
