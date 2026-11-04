@@ -538,6 +538,25 @@ async function generateHPCReport(site) {
     const margin = 20;
     pdf.addImage(logoUrl, "PNG", margin, 10, 28, 28);
     
+    const textX = margin + 34; // 54; small gap after logo
+
+    pdf.setFont("times", "bold");
+    pdf.setFontSize(12);
+    pdf.text("O/o General Manager, Tripura BA", textX, 15, { align: "left" });
+
+    pdf.setFont("times", "normal");
+    pdf.setFontSize(10);
+    pdf.text("Doorsanchar Bhavan, Kaman Chowmuhani, Agartala - 799001", textX, 23, { align: "left" });
+
+    // Divider below the letterhead
+    pdf.setFont("times", "normal");
+    pdf.setFontSize(12);
+    pdf.setLineWidth(0.5);
+    pdf.line(margin, 35, pageWidth - margin, 35);
+
+
+
+    pdf.setFont("times", "bold"); pdf.setFontSize(14);
     pdf.setLineWidth(0.5); pdf.line(20, 35, pageWidth - 20, 35);
     pdf.text("Minutes of HPC", pageWidth / 2, 41, { align: "center" });
     pdf.setFont("times", "normal"); pdf.setFontSize(14);
