@@ -12,6 +12,7 @@
      <script src="https://cdn.rawgit.com/rainabba/jquery-table2excel/1.1.0/dist/jquery.table2excel.min.js"></script>
      <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
      <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <style>
     a{
@@ -157,6 +158,7 @@
     import { getDatabase, ref, child, onValue, get, set, update,remove } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
    
     import {app} from "./firebase-config.js";  
+    const logoUrl = "./bsnllogo_04112026.png";
 
 //const app = initializeApp(firebaseConfig);
 
@@ -328,14 +330,11 @@ async function renderTable() {
             <td>${btsdata.othertsp || ''}</td>
             <td style="text-align: center;">${btsdata.rentrevisioncount || ''}</td>
 
-            <td style="text-align: center;">
-               ${
-              btsdata.hpcurl && btsdata.hpcurl.trim()
-              ? `<a href="${btsdata.hpcurl}" target="_blank" class="btn btn-primary btn-xs">
-                      Click Here
-                </a>`
-              : `<span style="color:#999;">PDF Not Available</span>`
-          }
+            <td style="text-align: center; white-space:nowrap;">
+               ${btsdata.hpcurl && btsdata.hpcurl.trim()
+                 ? `<a href="${btsdata.hpcurl}" target="_blank" class="btn btn-primary btn-xs">Existing HPC</a>`
+                 : ''}
+               <button class="btn btn-success btn-xs generate-hpc-btn">Create HPC</button>
             </td>
 
             <td style="text-align: center;">${btsdata.nextrevisiondate || ''}</td>
@@ -363,6 +362,7 @@ async function renderTable() {
         row.querySelector(".edit-btn").addEventListener("click", () => editBts(btsdata));
         row.querySelector(".delete-btn").addEventListener("click", () => deleteBts(btsdata.key));
         row.querySelector(".last-payment-details-btn").addEventListener("click", () => showLastPaymentDetails(btsdata));
+        row.querySelector(".generate-hpc-btn").addEventListener("click", () => generateHPCReport(btsdata));
         tbody.appendChild(row);
     });
     searchcount.innerText = filteredData.length;
@@ -482,6 +482,82 @@ if (!window.popupShown && alertList.length > 0) {
 
 
 
+
+/* =============== HPC MINUTES PDF =============== */
+async function generateHPCReport(site) {
+    const validDMY = value => {
+        if (!/^\d{2}-\d{2}-\d{4}$/.test(value)) return false;
+        const [day, month, year] = value.split("-").map(Number);
+        const date = new Date(year, month - 1, day);
+        return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+    };
+    const esc = value => String(value || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const existingRent = Number(String(site.monthlyrent || "").replace(/,/g, ""));
+    const result = await Swal.fire({
+        title: "Generate HPC Report", width: 560, showCancelButton: true,
+        confirmButtonText: "Generate PDF", focusConfirm: false,
+        html: `<div style="text-align:left;max-height:65vh;overflow:auto;padding:4px;">
+            <p><b>BTS Site:</b> ${esc(site.location || site.name || site.contractcode || "BTS Site")}</p>
+            <p><b>Existing Monthly Rent:</b> ₹${Number.isFinite(existingRent) ? existingRent.toLocaleString("en-IN") : "Not available"}</p>
+            <label>Effect Date of Revision (DD-MM-YYYY)<input id="hpc_effectdate" class="swal2-input" placeholder="DD-MM-YYYY" maxlength="10"></label>
+            <label>Revision Up to (DD-MM-YYYY)<input id="hpc_enddate" class="swal2-input" placeholder="DD-MM-YYYY" maxlength="10"></label>
+            <label>% of Hike from Existing Rent<input id="hpc_hike" type="number" min="0" step="0.01" class="swal2-input" placeholder="Enter hike percentage"></label>
+            <hr><label>Chairman<input id="hpc_chairman" class="swal2-input" placeholder="Chairman"></label>
+            <label>Member-1<input id="hpc_member1" class="swal2-input" placeholder="Member-1"></label>
+            <label>Member-2<input id="hpc_member2" class="swal2-input" placeholder="Member-2"></label>
+            <label>Convener<input id="hpc_convener" class="swal2-input" placeholder="Convener"></label>
+        </div>`,
+        preConfirm: () => {
+            const effectDate = document.getElementById("hpc_effectdate").value.trim();
+            const endDate = document.getElementById("hpc_enddate").value.trim();
+            const hike = Number(document.getElementById("hpc_hike").value);
+            const chairman = document.getElementById("hpc_chairman").value.trim();
+            const member1 = document.getElementById("hpc_member1").value.trim();
+            const member2 = document.getElementById("hpc_member2").value.trim();
+            const convener = document.getElementById("hpc_convener").value.trim();
+            if (!validDMY(effectDate) || !validDMY(endDate)) return Swal.showValidationMessage("Enter valid dates in DD-MM-YYYY format."), false;
+            if (!Number.isFinite(hike) || hike < 0) return Swal.showValidationMessage("Enter a valid hike percentage."), false;
+            if (!Number.isFinite(existingRent) || existingRent <= 0) return Swal.showValidationMessage("Existing monthly rent is missing or invalid in this BTS entry."), false;
+            if (!chairman || !member1 || !member2 || !convener) return Swal.showValidationMessage("Please enter all four signatories."), false;
+            const [d1,m1,y1] = effectDate.split("-").map(Number), [d2,m2,y2] = endDate.split("-").map(Number);
+            if (new Date(y1,m1-1,d1) > new Date(y2,m2-1,d2)) return Swal.showValidationMessage("Revision Up to date cannot be earlier than Effect Date."), false;
+            return { effectDate, endDate, hike, chairman, member1, member2, convener };
+        }
+    });
+    if (!result.isConfirmed) return;
+
+    const d = result.value;
+    const revisedRent = Math.round(existingRent * (1 + d.hike / 100));
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: "mm", format: "a4" });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const siteName = String(site.location || site.name || site.contractcode || "BTS Site");
+
+    pdf.setFont("times", "bold"); pdf.setFontSize(18);
+    
+    const margin = 20;
+    pdf.addImage(logoUrl, "PNG", margin, 10, 28, 28);
+    
+    pdf.setLineWidth(0.5); pdf.line(20, 35, pageWidth - 20, 35);
+    pdf.text("Minutes of HPC", pageWidth / 2, 41, { align: "center" });
+    pdf.setFont("times", "normal"); pdf.setFontSize(14);
+    const paragraph = `The committee has decided to increase the monthly rent of ${siteName} by ${d.hike}% with effect from ${d.effectDate} up to ${d.endDate}. The revised monthly rent will be Rs. ${revisedRent.toLocaleString("en-IN")}/-.`;
+    pdf.text(pdf.splitTextToSize(paragraph, pageWidth - 40), 20, 62, { lineHeightFactor: 1.8 });
+
+    const signatories = [
+        { name: d.convener, role: "Convener", x: 28 },
+        { name: d.member2, role: "Member-2", x: 78 },
+        { name: d.member1, role: "Member-1", x: 128 },
+        { name: d.chairman, role: "Chairman", x: 178 }
+    ];
+    signatories.forEach(s => {
+        pdf.setFont("times", "bold"); pdf.setFontSize(10);
+        pdf.text(s.name, s.x, 245, { align: "center", maxWidth: 42 });
+        pdf.setFont("times", "normal"); pdf.text(s.role, s.x, 252, { align: "center" });
+    });
+    const safeName = siteName.replace(/[^a-z0-9_-]+/gi, "_").replace(/^_+|_+$/g, "") || "BTS_Site";
+    pdf.save(`HPC_Minutes_${safeName}.pdf`);
+}
 
 window.editBts = function (btsdata) {
     console.log(btsdata);
